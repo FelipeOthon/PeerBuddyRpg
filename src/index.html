@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PeerBuddy RPG</title>
+  <link rel="icon" type="image/png" href="logo.png" />
+  <style>
+    :root {
+      --xp-face: #ece9d8;
+      --xp-face-dark: #d4d0c8;
+      --xp-border-light: #ffffff;
+      --xp-border-mid: #aca899;
+      --xp-border-dark: #716f64;
+      --xp-text: #000000;
+      --xp-muted: #4a483f;
+      --ok-bg: #dff6dd;
+      --ok-border: #107c10;
+      --ok-text: #0b5a0b;
+      --warn-bg: #fff4ce;
+      --warn-border: #9d5d00;
+      --warn-text: #7a4600;
+      --err-bg: #fde7e9;
+      --err-border: #a80000;
+      --err-text: #8c0000;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Tahoma", "MS Sans Serif", "Segoe UI", sans-serif;
+      font-size: 12px;
+      color: var(--xp-text);
+      line-height: 1.35;
+      min-height: 100vh;
+      background: var(--xp-face);
+      user-select: none;
+    }
+
+    .xp-window {
+      width: 100%;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: var(--xp-face);
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 8px 12px;
+      background: #f5f4ee;
+      border-bottom: 2px solid var(--xp-border-mid);
+    }
+
+    .status-main {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      font-size: 13px;
+      font-weight: 700;
+      border: 2px solid var(--xp-border-mid);
+      background: #e5e2d5;
+      color: #333;
+      border-radius: 3px;
+    }
+    .badge.ok { background: var(--ok-bg); border-color: var(--ok-border); color: var(--ok-text); }
+    .badge.warn { background: var(--warn-bg); border-color: var(--warn-border); color: var(--warn-text); }
+    .badge.err { background: var(--err-bg); border-color: var(--err-border); color: var(--err-text); }
+    .badge.sec {
+      font-size: 11px;
+      background: #e8f1ff;
+      border: 1px solid #316ac5;
+      color: #003399;
+      font-family: "Consolas", monospace;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 4px;
+      padding: 6px 12px 0 12px;
+      background: var(--xp-face-dark);
+      border-bottom: 1px solid var(--xp-border-dark);
+    }
+
+    .tab-btn {
+      padding: 6px 14px;
+      border: 1px solid var(--xp-border-dark);
+      border-bottom: none;
+      border-radius: 4px 4px 0 0;
+      background: #dedad0;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .tab-btn.active {
+      background: var(--xp-face);
+      color: #003399;
+      position: relative;
+      top: 1px;
+      padding-bottom: 7px;
+    }
+
+    .tab-panel {
+      display: none;
+      padding: 10px 12px;
+      flex: 1;
+      gap: 10px;
+    }
+    .tab-panel.active {
+      display: flex;
+      flex-direction: column;
+    }
+
+    fieldset.card {
+      margin: 0;
+      padding: 9px 11px 11px 11px;
+      border: 1px solid #d0ccc0;
+      box-shadow: inset 1px 1px 0 #fff, 1px 1px 0 #fff;
+      border-radius: 4px;
+      background: var(--xp-face);
+    }
+    fieldset.card > legend {
+      padding: 0 6px;
+      font-weight: 700;
+      font-size: 12px;
+      color: #003399;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+      gap: 10px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 8px;
+    }
+
+    .stat {
+      background: #fff;
+      border: 2px solid;
+      border-color: var(--xp-border-dark) var(--xp-border-light) var(--xp-border-light) var(--xp-border-dark);
+      padding: 5px 8px;
+    }
+    .stat-label { font-size: 10px; color: var(--xp-muted); text-transform: uppercase; font-weight: 700; }
+    .stat-value { font-size: 14px; font-weight: 700; margin-top: 2px; font-variant-numeric: tabular-nums; }
+
+    label { display: block; font-size: 11px; font-weight: 600; color: #222; margin-bottom: 3px; }
+
+    select, input[type="text"], input[type="password"], input[type="number"], textarea {
+      width: 100%;
+      background: #fff;
+      color: #000;
+      border: 2px solid;
+      border-color: #7f9db9 #dcd9ce #dcd9ce #7f9db9;
+      padding: 4px 6px;
+      font-size: 12px;
+      font-family: inherit;
+      user-select: text;
+    }
+
+    textarea {
+      font-family: "Consolas", monospace;
+      font-size: 11px;
+      resize: vertical;
+      min-height: 54px;
+    }
+
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+    button {
+      background: linear-gradient(180deg, #fff 0%, #ece9d8 45%, #d8d3c0 100%);
+      color: #000;
+      border: 1px solid #003c74;
+      border-radius: 3px;
+      padding: 5px 12px;
+      font-size: 12px;
+      font-family: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover:not(:disabled) { border-color: #e68b2c; box-shadow: inset 0 0 0 2px #ffe08a; }
+    button:disabled { color: #8b897e; border-color: #aca899; background: #ebe8dc; cursor: not-allowed; }
+    button.secondary { border-color: #716f64; }
+    button.danger { border-color: #8c0000; color: #700000; background: linear-gradient(180deg, #fff0f0 0%, #f3d4d4 100%); }
+    button.active-tool { border-color: #003399; background: #dbeafe; color: #1e3a8a; }
+
+    .checkbox-row { display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; }
+    .checkbox-row input { width: auto; cursor: pointer; }
+
+    .meter-wrap {
+      height: 11px;
+      background: #fff;
+      border: 2px solid;
+      border-color: var(--xp-border-dark) var(--xp-border-light) var(--xp-border-light) var(--xp-border-dark);
+      margin-top: 5px;
+      padding: 1px;
+    }
+    .meter-bar {
+      height: 100%;
+      width: 0%;
+      background: repeating-linear-gradient(90deg, #22c55e 0px, #22c55e 7px, #fff 7px, #fff 9px);
+    }
+
+    /* VTT Workspace */
+    .vtt-layout {
+      display: grid;
+      grid-template-columns: 1fr 330px;
+      gap: 10px;
+      flex: 1;
+      min-height: 540px;
+    }
+    @media (max-width: 960px) {
+      .vtt-layout { grid-template-columns: 1fr; }
+    }
+
+    .vtt-main {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-height: 480px;
+    }
+
+    .vtt-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      padding: 6px 8px;
+      background: #f5f4ee;
+      border: 1px solid var(--xp-border-mid);
+      border-radius: 3px;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      flex: 1;
+      min-height: 440px;
+      background: #14171f;
+      border: 2px solid;
+      border-color: var(--xp-border-dark) var(--xp-border-light) var(--xp-border-light) var(--xp-border-dark);
+      overflow: hidden;
+    }
+    .canvas-wrap canvas { display: block; width: 100%; height: 100%; }
+
+    .vtt-sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 700px;
+      overflow-y: auto;
+    }
+
+    .log-box {
+      background: #fff;
+      border: 1px solid var(--xp-border-mid);
+      padding: 6px;
+      height: 150px;
+      overflow-y: auto;
+      font-size: 11px;
+      user-select: text;
+    }
+    .log-item { padding: 3px 0; border-bottom: 1px solid #eee; }
+    .log-item.gm-secret { background: #fef3c7; padding: 3px 4px; }
+
+    .list-box {
+      background: #fff;
+      border: 1px solid var(--xp-border-mid);
+      padding: 6px;
+      max-height: 150px;
+      overflow-y: auto;
+      font-size: 11px;
+    }
+    .init-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 3px 5px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .init-row.active-turn { background: #dbeafe; font-weight: 700; }
+
+    .screen-box {
+      background: #d4d0c8;
+      border: 3px solid;
+      border-color: #fff #716f64 #716f64 #fff;
+      padding: 8px;
+      margin-top: 8px;
+      display: none;
+    }
+    .screen-box.active { display: block; }
+    .screen-box video {
+      width: 100%;
+      max-height: 360px;
+      display: block;
+      background: #000;
+      border: 2px solid;
+      border-color: #404040 #fff #fff #404040;
+    }
+
+    .peer-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 6px;
+      background: #fff;
+      border: 1px solid var(--xp-border-mid);
+      margin-bottom: 4px;
+      font-size: 11px;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.65);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+      padding: 20px;
+    }
+    .modal-card {
+      background: var(--xp-face);
+      border: 2px solid var(--xp-border-dark);
+      max-width: 680px;
+      width: 100%;
+      padding: 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+    }
+    .modal-card img { max-width: 100%; max-height: 60vh; display: block; margin: 8px auto; }
+
+    .hint { font-size: 11px; color: var(--xp-muted); }
+
+    .xp-statusbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 10px;
+      font-size: 11px;
+      color: #333;
+      background: var(--xp-face-dark);
+      border-top: 1px solid #aca899;
+    }
+  </style>
+</head>
+<body>
+  <div class="xp-window">
+    <!-- Barra Superior -->
+    <div class="top-bar">
+      <div class="status-main">
+        <img src="logo.png" alt="PeerBuddy" width="32" height="32" />
+        <span id="connBadge" class="badge">Desconectado</span>
+        <span id="sasBadge" class="badge sec" style="display:none;">Segurança: ------</span>
+        <div class="row" style="gap:4px;">
+          <label for="roleSelect" style="margin:0;">Papel:</label>
+          <select id="roleSelect" style="width:auto;">
+            <option value="gm" selected>Mestre (GM Hub)</option>
+            <option value="player">Jogador</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <button id="btnStartMic">Ativar Microfone</button>
+        <button id="btnMute" class="secondary" disabled>Mutar (M)</button>
+        <button id="btnHangup" class="danger" disabled>Desconectar</button>
+      </div>
+    </div>
+
+    <!-- Abas -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="vtt">Mesa (VTT) &amp; Dados</button>
+      <button class="tab-btn" data-tab="connect">Conexão, Voz &amp; Tela</button>
+      <button class="tab-btn" data-tab="soundboard">Soundboard &amp; Trilha</button>
+    </div>
+
+    <!-- ABA 1: MESA VTT & PAINEL RPG -->
+    <div id="tab-vtt" class="tab-panel active">
+      <div class="vtt-layout">
+        <div class="vtt-main">
+          <div class="vtt-toolbar">
+            <button id="toolSelect" class="active-tool" data-tool="select">Mover</button>
+            <button id="toolRuler" data-tool="ruler">Régua</button>
+            <button id="toolPing" data-tool="ping">Ping</button>
+            <span class="gm-only row" style="gap:6px;">
+              <button id="toolFogReveal" data-tool="fog-reveal">Revelar Fog</button>
+              <button id="toolFogHide" data-tool="fog-hide">Esconder Fog</button>
+              <button id="btnFogCover" class="secondary">Cobrir Tudo</button>
+              <button id="btnFogClear" class="secondary">Limpar Fog</button>
+              <label class="checkbox-row" style="margin:0;">
+                <input type="checkbox" id="fogEnabledToggle" />
+                <span>Fog</span>
+              </label>
+            </span>
+            <label class="checkbox-row" style="margin:0;">
+              <input type="checkbox" id="gridToggle" checked />
+              <span>Grid</span>
+            </label>
+            <label class="checkbox-row" style="margin:0;">
+              <input type="checkbox" id="snapToggle" checked />
+              <span>Snap</span>
+            </label>
+            <span class="gm-only row" style="gap:6px;">
+              <input type="file" id="mapFileInput" accept="image/*" style="display:none;" />
+              <button id="btnLoadMap">Carregar Mapa</button>
+              <button id="btnAddToken">+ Token</button>
+            </span>
+          </div>
+
+          <div class="canvas-wrap">
+            <canvas id="vttCanvas"></canvas>
+          </div>
+          <div class="hint">Dica: arraste tokens com o botão esquerdo, mova a câmera com botão direito/meio e dê zoom com a rodinha do mouse.</div>
+        </div>
+
+        <!-- Painel Lateral RPG -->
+        <div class="vtt-sidebar">
+          <fieldset class="card">
+            <legend>Rolador de Dados</legend>
+            <div class="row">
+              <input id="diceExpr" type="text" value="1d20+5" style="flex:1;" placeholder="ex: 1d20+5, 2d20kh1" />
+              <button id="btnRollDice">Rolar</button>
+            </div>
+            <div class="row" style="margin-top:6px;">
+              <button class="secondary quick-die" data-expr="1d20">d20</button>
+              <button class="secondary quick-die" data-expr="2d20kh1">Vant.</button>
+              <button class="secondary quick-die" data-expr="2d20kl1">Desv.</button>
+              <button class="secondary quick-die" data-expr="1d6">d6</button>
+              <label class="checkbox-row gm-only" style="margin:0;">
+                <input type="checkbox" id="gmSecretRoll" />
+                <span>Oculto (GM)</span>
+              </label>
+            </div>
+            <div id="diceLog" class="log-box" style="margin-top:6px;"></div>
+          </fieldset>
+
+          <fieldset class="card">
+            <legend>Iniciativa (Rodada <span id="roundNum">1</span>)</legend>
+            <div class="row gm-only" style="margin-bottom:6px;">
+              <input id="initName" type="text" placeholder="Nome" style="flex:1;" />
+              <input id="initVal" type="number" placeholder="Init" style="width:62px;" />
+              <button id="btnAddInit">+</button>
+            </div>
+            <div id="initList" class="list-box"></div>
+            <div class="row gm-only" style="margin-top:6px;">
+              <button id="btnNextTurn">Próximo Turno</button>
+              <button id="btnResetInit" class="secondary">Zerar</button>
+            </div>
+          </fieldset>
+
+          <fieldset class="card gm-only">
+            <legend>Handouts &amp; Notas do Mestre</legend>
+            <div class="row" style="margin-bottom:6px;">
+              <input id="handoutTitle" type="text" placeholder="Título do Handout" style="flex:1;" />
+              <input type="file" id="handoutImgInput" accept="image/*" style="display:none;" />
+              <button id="btnSendHandoutImg" class="secondary">Enviar Img</button>
+            </div>
+            <textarea id="handoutText" placeholder="Texto do handout ou descrição..."></textarea>
+            <div class="row" style="margin-top:4px; margin-bottom:8px;">
+              <button id="btnSendHandoutText">Enviar Texto</button>
+            </div>
+            <label for="gmNotes">Notas Privadas (salvas localmente):</label>
+            <textarea id="gmNotes" placeholder="Anotações da sessão (nunca enviadas na rede)..."></textarea>
+          </fieldset>
+        </div>
+      </div>
+    </div>
+
+    <!-- ABA 2: CONEXÃO, VOZ & TELA -->
+    <div id="tab-connect" class="tab-panel">
+      <fieldset class="card">
+        <legend>Telemetria da Rede</legend>
+        <div class="stats-grid">
+          <div class="stat"><div class="stat-label">Latência (RTT)</div><div id="statRtt" class="stat-value">-- ms</div></div>
+          <div class="stat"><div class="stat-label">Jitter</div><div id="statJitter" class="stat-value">-- ms</div></div>
+          <div class="stat"><div class="stat-label">Perda Pacotes</div><div id="statLoss" class="stat-value">--</div></div>
+          <div class="stat"><div class="stat-label">Voz Recebida</div><div id="statBitrate" class="stat-value">-- kbps</div></div>
+          <div class="stat"><div class="stat-label">Tipo de Rota</div><div id="statRoute" class="stat-value">--</div></div>
+        </div>
+      </fieldset>
+
+      <div class="grid-2">
+        <!-- Painel Mestre (Multi-Peer) -->
+        <fieldset id="gmConnectCard" class="card">
+          <legend>Mestre — Convidar Jogadores (Multi-Peer)</legend>
+          <div class="row" style="margin-bottom:6px;">
+            <input id="newPeerName" type="text" placeholder="Nome do Jogador (ex: Guerreiro)" style="flex:1;" />
+            <button id="btnCreateOffer" disabled>1. Gerar Convite</button>
+            <button id="btnCopyOffer" class="secondary" disabled>Copiar</button>
+          </div>
+          <textarea id="offerOut" readonly placeholder="Clique em '1. Gerar Convite' após ativar o microfone..."></textarea>
+          <label for="answerIn" style="margin-top:6px;">Cole a resposta do jogador:</label>
+          <div class="row">
+            <textarea id="answerIn" placeholder="Cole CV1:... aqui" style="flex:1;"></textarea>
+            <button id="btnAcceptAnswer" disabled>Conectar</button>
+          </div>
+          <label style="margin-top:8px;">Jogadores Conectados:</label>
+          <div id="peerListBox" class="list-box"></div>
+        </fieldset>
+
+        <!-- Painel Jogador -->
+        <fieldset id="playerConnectCard" class="card" style="display:none;">
+          <legend>Jogador — Entrar na Mesa</legend>
+          <label for="playerNameInput">Seu Nome:</label>
+          <input id="playerNameInput" type="text" value="Jogador" style="margin-bottom:6px;" />
+          <label for="offerIn">Cole o convite do Mestre:</label>
+          <textarea id="offerIn" placeholder="Cole CV1:... aqui"></textarea>
+          <div class="row" style="margin:6px 0;">
+            <button id="btnCreateAnswer" disabled>2. Gerar Resposta</button>
+            <button id="btnCopyAnswer" class="secondary" disabled>Copiar Resposta</button>
+          </div>
+          <label for="answerOut">Sua resposta (envie ao Mestre):</label>
+          <textarea id="answerOut" readonly placeholder="Sua resposta aparecerá aqui..."></textarea>
+        </fieldset>
+
+        <!-- Microfone e Saída -->
+        <fieldset class="card">
+          <legend>Microfone e Volumes</legend>
+          <label for="micSelect">Microfone</label>
+          <select id="micSelect"></select>
+          <div class="meter-wrap"><div id="micMeter" class="meter-bar"></div></div>
+
+          <label for="speakerSelect" style="margin-top:8px;">Saída de Áudio</label>
+          <select id="speakerSelect"></select>
+
+          <div class="row" style="margin-top:8px;">
+            <label for="remoteVolume" style="margin:0; width:110px;">Volume Voz:</label>
+            <input id="remoteVolume" type="range" min="0" max="1" step="0.05" value="1" style="flex:1;" />
+          </div>
+          <div class="row" style="margin-top:4px;">
+            <label for="sbRemoteVolume" style="margin:0; width:110px;">Volume Música:</label>
+            <input id="sbRemoteVolume" type="range" min="0" max="1" step="0.05" value="0.7" style="flex:1;" />
+          </div>
+
+          <label class="checkbox-row" style="margin-top:6px;">
+            <input type="checkbox" id="rawAudioToggle" checked />
+            <span>Modo Ultra-Baixa Latência (sem filtros de eco/ruído)</span>
+          </label>
+          <label class="checkbox-row">
+            <input type="checkbox" id="ptime10Toggle" />
+            <span>Pacotes 10 ms (padrão 20 ms evita perda)</span>
+          </label>
+          <div id="audioStatus" class="hint" style="margin-top:6px;">Ative o microfone antes de gerar ou aceitar um convite.</div>
+        </fieldset>
+      </div>
+
+      <!-- Transmissão de Tela + Preview Local -->
+      <fieldset class="card">
+        <legend>Transmissão de Tela (Sob Demanda)</legend>
+        <div class="row">
+          <select id="screenPreset" style="width:auto;">
+            <option value="1080p60" selected>1080p (12 Mbps)</option>
+            <option value="1440p60">1440p (20 Mbps)</option>
+            <option value="720p60">720p (6 Mbps)</option>
+            <option value="native60">Nativa (25 Mbps)</option>
+          </select>
+          <select id="screenMode" style="width:auto;">
+            <option value="motion" selected>Jogo / Vídeo (60 fps)</option>
+            <option value="detail">Texto / Código (nitidez)</option>
+          </select>
+          <select id="screenCodec" style="width:auto;">
+            <option value="h264" selected>H.264 (hardware)</option>
+            <option value="vp9">VP9</option>
+            <option value="av1">AV1</option>
+          </select>
+          <button id="btnShareScreen" disabled>Compartilhar Tela</button>
+          <button id="btnStopScreen" class="danger" disabled>Parar Tela</button>
+        </div>
+        <label class="checkbox-row" style="margin-top:6px;">
+          <input type="checkbox" id="screenAudioToggle" checked />
+          <span>Incluir áudio da tela (estéreo 192 kbps)</span>
+        </label>
+        <div id="screenStatus" class="hint" style="margin-top:4px;">Conecte-se primeiro para compartilhar ou assistir a tela.</div>
+
+        <!-- Preview Local Mutado para quem transmite -->
+        <div id="localScreenBox" class="screen-box">
+          <div class="row" style="justify-content:space-between; margin-bottom:4px;">
+            <strong>Preview da Sua Transmissão (áudio mutado para evitar eco)</strong>
+            <button id="btnToggleLocalPreview" class="secondary">Ocultar Preview</button>
+          </div>
+          <video id="localScreenPreview" autoplay playsinline muted></video>
+        </div>
+
+        <!-- Player Remoto -->
+        <div id="remoteScreenBox" class="screen-box">
+          <video id="remoteVideo" autoplay playsinline></video>
+          <div class="row" style="justify-content:space-between; margin-top:6px;">
+            <span id="videoStatsText">Aguardando vídeo...</span>
+            <div class="row">
+              <label for="screenVolume" style="margin:0;">Volume Tela:</label>
+              <input id="screenVolume" type="range" min="0" max="1" step="0.05" value="1" style="width:100px;" />
+              <button id="btnFullscreen" class="secondary">Tela Cheia</button>
+            </div>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="card">
+        <legend>Rede Avançada (STUN / TURN)</legend>
+        <details>
+          <summary>Opções de TURN (opcional)</summary>
+          <div class="grid-2" style="margin-top:6px;">
+            <div>
+              <label for="turnUrl">TURN URI</label>
+              <input id="turnUrl" type="text" placeholder="ex: turn:seu-turn.com:3478" />
+            </div>
+            <div class="row">
+              <div style="flex:1;"><label for="turnUser">Usuário</label><input id="turnUser" type="text" /></div>
+              <div style="flex:1;"><label for="turnPass">Senha</label><input id="turnPass" type="password" /></div>
+            </div>
+          </div>
+        </details>
+      </fieldset>
+    </div>
+
+    <!-- ABA 3: SOUNDBOARD -->
+    <div id="tab-soundboard" class="tab-panel">
+      <fieldset class="card">
+        <legend>Música Ambiente (Stream P2P Estéreo)</legend>
+        <div class="row" style="margin-bottom:8px;">
+          <input type="file" id="musicFileInput" accept="audio/*" style="display:none;" />
+          <button id="btnLoadMusic" class="gm-only">Escolher Áudio</button>
+          <button id="btnPlayMusic" class="gm-only">Tocar</button>
+          <button id="btnPauseMusic" class="gm-only secondary">Pausar</button>
+          <label class="checkbox-row gm-only" style="margin:0;">
+            <input type="checkbox" id="musicLoopToggle" checked />
+            <span>Loop</span>
+          </label>
+          <span id="musicCueStatus" class="hint">Nenhuma faixa tocando</span>
+        </div>
+        <div class="row gm-only">
+          <label for="sbMasterVol" style="margin:0;">Volume de Envio (Mestre):</label>
+          <input id="sbMasterVol" type="range" min="0" max="1" step="0.05" value="0.7" style="width:160px;" />
+          <label class="checkbox-row" style="margin:0;">
+            <input type="checkbox" id="sbLocalPreview" checked />
+            <span>Ouvir retorno local</span>
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset class="card gm-only">
+        <legend>Efeitos Sonoros (SFX)</legend>
+        <div class="row" style="margin-bottom:8px;">
+          <button class="sfx-builtin" data-sfx="bell">Sino / Taverna</button>
+          <button class="sfx-builtin" data-sfx="crit">Acerto Crítico</button>
+          <button class="sfx-builtin" data-sfx="hit">Impacto / Golpe</button>
+          <input type="file" id="sfxFileInput" accept="audio/*" multiple style="display:none;" />
+          <button id="btnAddSfx" class="secondary">+ Adicionar SFX (MP3/WAV/OGG)</button>
+        </div>
+        <div id="customSfxList" class="row"></div>
+      </fieldset>
+    </div>
+
+    <div class="xp-statusbar">
+      <span>PeerBuddy RPG • Modo Seguro Isolado</span>
+      <span>WebRTC DTLS-SRTP • VTT + Soundboard + Voz</span>
+    </div>
+  </div>
+
+  <!-- Modal Handout -->
+  <div id="handoutModal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="row" style="justify-content:space-between;">
+        <strong id="handoutModalTitle">Handout</strong>
+        <button id="btnCloseHandout">Fechar</button>
+      </div>
+      <img id="handoutModalImg" alt="Handout" />
+      <p id="handoutModalText" style="white-space:pre-wrap; user-select:text;"></p>
+    </div>
+  </div>
+
+  <audio id="remoteAudio" autoplay playsinline></audio>
+  <audio id="remoteSoundboardAudio" autoplay playsinline></audio>
+  <script type="module" src="main.js"></script>
+</body>
+</html>
