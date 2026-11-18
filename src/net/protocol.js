@@ -21,6 +21,7 @@ export const MSG = Object.freeze({
   CHAT_MSG: 'chat:msg',
   SHEET_UPDATE: 'sheet:update',
   WALL_UPDATE: 'wall:update',
+  DRAW_UPDATE: 'draw:update',
   ASSET_START: 'asset:start',
   ASSET_CHUNK: 'asset:chunk',
   ASSET_END: 'asset:end',

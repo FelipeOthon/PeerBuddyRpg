@@ -3,119 +3,226 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PeerBuddy RPG</title>
+  <title>PeerBuddy RPG — Mesa Virtual P2P</title>
   <link rel="icon" type="image/png" href="logo.png" />
   <style>
     :root {
-      --xp-face: #ece9d8;
-      --xp-face-dark: #d4d0c8;
-      --xp-border-light: #ffffff;
-      --xp-border-mid: #aca899;
-      --xp-border-dark: #716f64;
-      --xp-text: #000000;
-      --xp-muted: #4a483f;
-      --ok-bg: #dff6dd;
-      --ok-border: #107c10;
-      --ok-text: #0b5a0b;
-      --warn-bg: #fff4ce;
-      --warn-border: #9d5d00;
-      --warn-text: #7a4600;
-      --err-bg: #fde7e9;
-      --err-border: #a80000;
-      --err-text: #8c0000;
+      --bg-app: #0d0f14;
+      --bg-panel: #161922;
+      --bg-elevated: #1e2330;
+      --bg-input: #11141c;
+      --border: #2c3345;
+      --border-light: #3b445c;
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --accent: #ec2154;
+      --accent-blue: #38bdf8;
+      --accent-gold: #f59e0b;
+      --ok-bg: #052e16;
+      --ok-border: #16a34a;
+      --ok-text: #86efac;
+      --warn-bg: #451a03;
+      --warn-border: #d97706;
+      --warn-text: #fcd34d;
+      --err-bg: #450a0a;
+      --err-border: #dc2626;
+      --err-text: #fca5a5;
     }
 
     * { box-sizing: border-box; }
 
     body {
       margin: 0;
-      font-family: "Tahoma", "MS Sans Serif", "Segoe UI", sans-serif;
+      font-family: "Segoe UI", "Inter", system-ui, sans-serif;
       font-size: 12px;
-      color: var(--xp-text);
-      line-height: 1.35;
-      min-height: 100vh;
-      background: var(--xp-face);
+      color: var(--text);
+      line-height: 1.4;
+      height: 100vh;
+      overflow: hidden;
+      background: var(--bg-app);
       user-select: none;
     }
 
-    .xp-window {
-      width: 100%;
-      min-height: 100vh;
+    .app-shell {
       display: flex;
       flex-direction: column;
-      background: var(--xp-face);
+      height: 100vh;
+      width: 100vw;
     }
 
+    /* Barra Superior Compacta */
     .top-bar {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      flex-wrap: wrap;
       gap: 10px;
-      padding: 8px 12px;
-      background: #f5f4ee;
-      border-bottom: 2px solid var(--xp-border-mid);
+      padding: 6px 12px;
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: 0.02em;
     }
 
     .status-main {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       flex-wrap: wrap;
     }
 
     .badge {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      font-size: 13px;
+      gap: 5px;
+      padding: 3px 9px;
+      font-size: 11px;
       font-weight: 700;
-      border: 2px solid var(--xp-border-mid);
-      background: #e5e2d5;
-      color: #333;
-      border-radius: 3px;
+      border: 1px solid var(--border-light);
+      background: var(--bg-elevated);
+      color: var(--text-muted);
+      border-radius: 999px;
     }
     .badge.ok { background: var(--ok-bg); border-color: var(--ok-border); color: var(--ok-text); }
     .badge.warn { background: var(--warn-bg); border-color: var(--warn-border); color: var(--warn-text); }
     .badge.err { background: var(--err-bg); border-color: var(--err-border); color: var(--err-text); }
     .badge.sec {
-      font-size: 11px;
-      background: #e8f1ff;
-      border: 1px solid #316ac5;
-      color: #003399;
+      background: #0c2340;
+      border-color: #0284c7;
+      color: #7dd3fc;
       font-family: "Consolas", monospace;
     }
 
-    .tabs {
+    /* Área Principal Roll20: Toolbar Esq + Mesa Centro + Sidebar Dir */
+    .workspace {
       display: flex;
+      flex: 1;
+      min-height: 0;
+      position: relative;
+    }
+
+    /* Canvas Container */
+    .stage-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      position: relative;
+      background: #0a0c10;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .canvas-wrap canvas { display: block; width: 100%; height: 100%; }
+
+    /* Toolbar Vertical Flutuante à Esquerda (estilo Roll20) */
+    .vtt-floating-toolbar {
+      position: absolute;
+      left: 10px;
+      top: 10px;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
       gap: 4px;
-      padding: 6px 12px 0 12px;
-      background: var(--xp-face-dark);
-      border-bottom: 1px solid var(--xp-border-dark);
+      padding: 6px;
+      background: rgba(22, 25, 34, 0.92);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border-light);
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      max-height: calc(100% - 20px);
+      overflow-y: auto;
+    }
+
+    .tool-sep {
+      height: 1px;
+      background: var(--border);
+      margin: 2px 0;
+    }
+
+    .vtt-floating-toolbar button {
+      padding: 5px 8px;
+      font-size: 11px;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    .vtt-floating-toolbar .checkbox-row {
+      font-size: 11px;
+      padding: 2px 4px;
+    }
+
+    /* Barra Inferior de Macros & Jogadores (estilo Roll20) */
+    .bottom-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 5px 10px;
+      background: var(--bg-panel);
+      border-top: 1px solid var(--border);
+      min-height: 36px;
+      flex-shrink: 0;
+      overflow-x: auto;
+    }
+
+    /* Sidebar Direita Estilo Roll20 */
+    .right-sidebar {
+      width: 370px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-panel);
+      border-left: 1px solid var(--border);
+      min-height: 0;
+    }
+    .right-sidebar.collapsed {
+      display: none;
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      background: var(--bg-app);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
     }
 
     .tab-btn {
-      padding: 6px 14px;
-      border: 1px solid var(--xp-border-dark);
-      border-bottom: none;
-      border-radius: 4px 4px 0 0;
-      background: #dedad0;
-      font-weight: 700;
+      padding: 8px 4px;
+      border: none;
+      border-bottom: 2px solid transparent;
+      border-radius: 0;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 600;
       cursor: pointer;
+      text-align: center;
     }
+    .tab-btn:hover { color: var(--text); background: var(--bg-elevated); }
     .tab-btn.active {
-      background: var(--xp-face);
-      color: #003399;
-      position: relative;
-      top: 1px;
-      padding-bottom: 7px;
+      color: #fff;
+      background: var(--bg-panel);
+      border-bottom-color: var(--accent);
     }
 
     .tab-panel {
       display: none;
-      padding: 10px 12px;
+      padding: 10px;
       flex: 1;
+      overflow-y: auto;
       gap: 10px;
     }
     .tab-panel.active {
@@ -123,211 +230,151 @@
       flex-direction: column;
     }
 
+    /* Cards e Controles */
     fieldset.card {
       margin: 0;
-      padding: 9px 11px 11px 11px;
-      border: 1px solid #d0ccc0;
-      box-shadow: inset 1px 1px 0 #fff, 1px 1px 0 #fff;
-      border-radius: 4px;
-      background: var(--xp-face);
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg-elevated);
     }
     fieldset.card > legend {
       padding: 0 6px;
       font-weight: 700;
-      font-size: 12px;
-      color: #003399;
-    }
-
-    .grid-2 {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
-      gap: 10px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--accent-blue);
     }
 
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-      gap: 8px;
+      grid-template-columns: repeat(auto-fit, minmax(95px, 1fr));
+      gap: 6px;
     }
-
     .stat {
-      background: #fff;
-      border: 2px solid;
-      border-color: var(--xp-border-dark) var(--xp-border-light) var(--xp-border-light) var(--xp-border-dark);
-      padding: 5px 8px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 5px 7px;
     }
-    .stat-label { font-size: 10px; color: var(--xp-muted); text-transform: uppercase; font-weight: 700; }
-    .stat-value { font-size: 14px; font-weight: 700; margin-top: 2px; font-variant-numeric: tabular-nums; }
+    .stat-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; }
+    .stat-value { font-size: 13px; font-weight: 700; margin-top: 2px; font-variant-numeric: tabular-nums; }
 
-    label { display: block; font-size: 11px; font-weight: 600; color: #222; margin-bottom: 3px; }
+    label { display: block; font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 3px; }
 
     select, input[type="text"], input[type="password"], input[type="number"], textarea {
       width: 100%;
-      background: #fff;
-      color: #000;
-      border: 2px solid;
-      border-color: #7f9db9 #dcd9ce #dcd9ce #7f9db9;
-      padding: 4px 6px;
+      background: var(--bg-input);
+      color: var(--text);
+      border: 1px solid var(--border-light);
+      border-radius: 4px;
+      padding: 5px 7px;
       font-size: 12px;
       font-family: inherit;
       user-select: text;
+    }
+    select:focus, input:focus, textarea:focus {
+      outline: none;
+      border-color: var(--accent-blue);
     }
 
     textarea {
       font-family: "Consolas", monospace;
       font-size: 11px;
       resize: vertical;
-      min-height: 54px;
+      min-height: 52px;
     }
 
-    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .grid-2 { display: grid; grid-template-columns: 1fr; gap: 8px; }
 
     button {
-      background: linear-gradient(180deg, #fff 0%, #ece9d8 45%, #d8d3c0 100%);
-      color: #000;
-      border: 1px solid #003c74;
-      border-radius: 3px;
-      padding: 5px 12px;
-      font-size: 12px;
+      background: #2b3245;
+      color: #f8fafc;
+      border: 1px solid var(--border-light);
+      border-radius: 4px;
+      padding: 5px 10px;
+      font-size: 11px;
       font-family: inherit;
       font-weight: 600;
       cursor: pointer;
+      transition: background 0.12s, border-color 0.12s;
     }
-    button:hover:not(:disabled) { border-color: #e68b2c; box-shadow: inset 0 0 0 2px #ffe08a; }
-    button:disabled { color: #8b897e; border-color: #aca899; background: #ebe8dc; cursor: not-allowed; }
-    button.secondary { border-color: #716f64; }
-    button.danger { border-color: #8c0000; color: #700000; background: linear-gradient(180deg, #fff0f0 0%, #f3d4d4 100%); }
-    button.active-tool { border-color: #003399; background: #dbeafe; color: #1e3a8a; }
+    button:hover:not(:disabled) { background: #363f57; border-color: var(--accent-blue); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    button.primary { background: var(--accent); border-color: #be123c; color: #fff; }
+    button.primary:hover:not(:disabled) { background: #f43f5e; }
+    button.secondary { background: var(--bg-input); border-color: var(--border); color: var(--text-muted); }
+    button.danger { background: #7f1d1d; border-color: #dc2626; color: #fecaca; }
+    button.active-tool { background: #0369a1; border-color: var(--accent-blue); color: #fff; }
 
-    .checkbox-row { display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; }
-    .checkbox-row input { width: auto; cursor: pointer; }
+    .checkbox-row { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text); cursor: pointer; }
+    .checkbox-row input { width: auto; cursor: pointer; accent-color: var(--accent); }
 
     .meter-wrap {
-      height: 11px;
-      background: #fff;
-      border: 2px solid;
-      border-color: var(--xp-border-dark) var(--xp-border-light) var(--xp-border-light) var(--xp-border-dark);
+      height: 8px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 4px;
       margin-top: 5px;
-      padding: 1px;
+      overflow: hidden;
     }
     .meter-bar {
       height: 100%;
       width: 0%;
-      background: repeating-linear-gradient(90deg, #22c55e 0px, #22c55e 7px, #fff 7px, #fff 9px);
+      background: linear-gradient(90deg, #22c55e, #eab308, #ef4444);
     }
 
-    /* VTT Workspace */
-    .vtt-layout {
-      display: grid;
-      grid-template-columns: 1fr 330px;
-      gap: 10px;
-      flex: 1;
-      min-height: 540px;
-    }
-    @media (max-width: 960px) {
-      .vtt-layout { grid-template-columns: 1fr; }
-    }
-
-    .vtt-main {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      min-height: 480px;
-    }
-
-    .vtt-toolbar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      align-items: center;
-      padding: 6px 8px;
-      background: #f5f4ee;
-      border: 1px solid var(--xp-border-mid);
-      border-radius: 3px;
-    }
-
-    .canvas-wrap {
-      position: relative;
-      flex: 1;
-      min-height: 440px;
-      background: #14171f;
-      border: 2px solid;
-      border-color: var(--xp-border-dark) var(--xp-border-light) var(--xp-border-light) var(--xp-border-dark);
-      overflow: hidden;
-    }
-    .canvas-wrap canvas { display: block; width: 100%; height: 100%; }
-
-    .vtt-sidebar {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      max-height: 700px;
-      overflow-y: auto;
-    }
-
-    .log-box {
-      background: #fff;
-      border: 1px solid var(--xp-border-mid);
+    .log-box, .list-box {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 4px;
       padding: 6px;
-      height: 150px;
       overflow-y: auto;
       font-size: 11px;
       user-select: text;
     }
-    .log-item { padding: 3px 0; border-bottom: 1px solid #eee; }
-    .log-item.gm-secret { background: #fef3c7; padding: 3px 4px; }
+    .log-item { padding: 4px 2px; border-bottom: 1px solid #1e2433; }
+    .log-item.gm-secret { background: rgba(245, 158, 11, 0.14); border-left: 2px solid var(--accent-gold); padding-left: 6px; }
 
-    .list-box {
-      background: #fff;
-      border: 1px solid var(--xp-border-mid);
-      padding: 6px;
-      max-height: 150px;
-      overflow-y: auto;
-      font-size: 11px;
-    }
     .init-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 3px 5px;
-      border-bottom: 1px solid #f0f0f0;
+      padding: 4px 6px;
+      border-bottom: 1px solid #1e2433;
     }
-    .init-row.active-turn { background: #dbeafe; font-weight: 700; }
-
-    .screen-box {
-      background: #d4d0c8;
-      border: 3px solid;
-      border-color: #fff #716f64 #716f64 #fff;
-      padding: 8px;
-      margin-top: 8px;
-      display: none;
-    }
-    .screen-box.active { display: block; }
-    .screen-box video {
-      width: 100%;
-      max-height: 360px;
-      display: block;
-      background: #000;
-      border: 2px solid;
-      border-color: #404040 #fff #fff #404040;
-    }
+    .init-row.active-turn { background: rgba(56, 189, 248, 0.18); border-left: 3px solid var(--accent-blue); font-weight: 700; }
 
     .peer-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 8px;
-      padding: 5px 6px;
-      background: #fff;
-      border: 1px solid var(--xp-border-mid);
+      gap: 6px;
+      padding: 5px 7px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 4px;
       margin-bottom: 4px;
       font-size: 11px;
     }
 
+    .screen-box {
+      background: var(--bg-input);
+      border: 1px solid var(--border-light);
+      border-radius: 6px;
+      padding: 6px;
+      margin-top: 8px;
+      display: none;
+    }
+    .screen-box.active { display: block; }
+    .screen-box video { width: 100%; max-height: 240px; display: block; background: #000; border-radius: 4px; }
+
     .modal-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.65);
+      background: rgba(0, 0, 0, 0.78);
       display: none;
       align-items: center;
       justify-content: center;
@@ -335,151 +382,170 @@
       padding: 20px;
     }
     .modal-card {
-      background: var(--xp-face);
-      border: 2px solid var(--xp-border-dark);
+      background: var(--bg-panel);
+      border: 1px solid var(--border-light);
+      border-radius: 8px;
       max-width: 680px;
       width: 100%;
-      padding: 12px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+      padding: 14px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65);
     }
-    .modal-card img { max-width: 100%; max-height: 60vh; display: block; margin: 8px auto; }
+    .modal-card img { max-width: 100%; max-height: 60vh; display: block; margin: 10px auto; border-radius: 4px; }
 
-    .hint { font-size: 11px; color: var(--xp-muted); }
-
-    .xp-statusbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 4px 10px;
-      font-size: 11px;
-      color: #333;
-      background: var(--xp-face-dark);
-      border-top: 1px solid #aca899;
-    }
+    .hint { font-size: 11px; color: var(--text-muted); }
   </style>
 </head>
 <body>
-  <div class="xp-window">
+  <div class="app-shell">
     <!-- Barra Superior -->
     <div class="top-bar">
       <div class="status-main">
-        <img src="logo.png" alt="PeerBuddy" width="32" height="32" />
+        <div class="brand">
+          <img src="logo.png" alt="PeerBuddy" width="24" height="24" />
+          <span>PeerBuddy VTT</span>
+        </div>
         <span id="connBadge" class="badge">Desconectado</span>
         <span id="sasBadge" class="badge sec" style="display:none;">Segurança: ------</span>
         <div class="row" style="gap:4px;">
           <label for="roleSelect" style="margin:0;">Papel:</label>
-          <select id="roleSelect" style="width:auto;">
+          <select id="roleSelect" style="width:auto; padding:3px 6px;">
             <option value="gm" selected>Mestre (GM Hub)</option>
             <option value="player">Jogador</option>
           </select>
         </div>
       </div>
+
       <div class="row">
-        <button id="btnStartMic">Ativar Microfone</button>
+        <button id="btnStartMic" class="primary">Ativar Microfone</button>
         <button id="btnMute" class="secondary" disabled>Mutar (M)</button>
         <button id="btnHangup" class="danger" disabled>Desconectar</button>
+        <button id="btnToggleSidebar" class="secondary">Ocultar Painel</button>
       </div>
     </div>
 
-    <!-- Abas -->
-    <div class="tabs">
-      <button class="tab-btn active" data-tab="vtt">Mesa (VTT) &amp; Chat</button>
-      <button class="tab-btn" data-tab="sheets">Fichas &amp; Macros</button>
-      <button class="tab-btn" data-tab="connect">Conexão, Voz &amp; Tela</button>
-      <button class="tab-btn" data-tab="soundboard">Soundboard &amp; Trilha</button>
-    </div>
+    <!-- Workspace Roll20 -->
+    <div class="workspace">
+      <!-- Mesa Principal + Toolbar Vertical Esquerda -->
+      <div class="stage-area">
+        <div class="vtt-floating-toolbar">
+          <button id="toolSelect" class="active-tool" data-tool="select">✋ Mover</button>
+          <button id="toolDraw" data-tool="draw">✏️ Desenhar</button>
+          <button id="btnClearDraw" class="secondary">🗑️ Limpar Desenho</button>
+          <button id="toolRuler" data-tool="ruler">📏 Régua</button>
+          <button id="toolPing" data-tool="ping">📍 Ping</button>
 
-    <!-- ABA 1: MESA VTT & PAINEL RPG -->
-    <div id="tab-vtt" class="tab-panel active">
-      <div class="vtt-layout">
-        <div class="vtt-main">
-          <div class="vtt-toolbar">
-            <button id="toolSelect" class="active-tool" data-tool="select">Mover</button>
-            <button id="toolRuler" data-tool="ruler">Régua</button>
-            <button id="toolPing" data-tool="ping">Ping</button>
-            <span class="gm-only row" style="gap:6px;">
-              <button id="toolWall" data-tool="wall">Parede</button>
-              <button id="btnClearWalls" class="secondary">Limpar Paredes</button>
-              <label class="checkbox-row" style="margin:0;">
-                <input type="checkbox" id="lightingToggle" />
-                <span>Luz/Visão</span>
-              </label>
-              <button id="toolFogReveal" data-tool="fog-reveal">Revelar Fog</button>
-              <button id="toolFogHide" data-tool="fog-hide">Esconder Fog</button>
-              <button id="btnFogCover" class="secondary">Cobrir Tudo</button>
-              <button id="btnFogClear" class="secondary">Limpar Fog</button>
-              <label class="checkbox-row" style="margin:0;">
-                <input type="checkbox" id="fogEnabledToggle" />
-                <span>Fog</span>
-              </label>
-            </span>
-            <label class="checkbox-row" style="margin:0;">
-              <input type="checkbox" id="gridToggle" checked />
-              <span>Grid</span>
-            </label>
-            <label class="checkbox-row" style="margin:0;">
-              <input type="checkbox" id="snapToggle" checked />
-              <span>Snap</span>
-            </label>
-            <span class="gm-only row" style="gap:6px;">
-              <input type="file" id="mapFileInput" accept="image/*" style="display:none;" />
-              <button id="btnLoadMap">Carregar Mapa</button>
-              <button id="btnAddToken">+ Token</button>
-            </span>
+          <div class="tool-sep gm-only"></div>
+          <div class="gm-only">
+            <label for="layerSelect" style="font-size:10px; margin-bottom:2px;">Camada:</label>
+            <select id="layerSelect" style="padding:3px 5px; font-size:11px;">
+              <option value="tokens" selected>Tokens (Pública)</option>
+              <option value="gm">Mestre (Oculta)</option>
+            </select>
           </div>
+          <button id="btnLoadMap" class="gm-only">🗺️ Mapa</button>
+          <input type="file" id="mapFileInput" accept="image/*" style="display:none;" />
+          <button id="btnAddToken" class="gm-only">👤 + Token</button>
 
-          <div class="canvas-wrap">
-            <canvas id="vttCanvas"></canvas>
-            <canvas id="dice3dCanvas" width="220" height="220" style="position:absolute; right:12px; bottom:12px; pointer-events:none; display:none;"></canvas>
-          </div>
-          <div class="row" style="justify-content:space-between;">
-            <span class="hint">Arraste tokens (esq.), mova câmera (dir./meio), zoom (scroll).</span>
-            <div id="macroBar" class="row" style="gap:4px;"></div>
+          <div class="tool-sep gm-only"></div>
+          <button id="toolWall" class="gm-only" data-tool="wall">🧱 Parede</button>
+          <button id="btnClearWalls" class="gm-only secondary">Limpar Paredes</button>
+          <label class="checkbox-row gm-only">
+            <input type="checkbox" id="lightingToggle" />
+            <span>Luz/Visão</span>
+          </label>
+
+          <div class="tool-sep gm-only"></div>
+          <button id="toolFogReveal" class="gm-only" data-tool="fog-reveal">👁️ Revelar Fog</button>
+          <button id="toolFogHide" class="gm-only" data-tool="fog-hide">🌫️ Esconder Fog</button>
+          <button id="btnFogCover" class="gm-only secondary">Cobrir Tudo</button>
+          <button id="btnFogClear" class="gm-only secondary">Limpar Fog</button>
+          <label class="checkbox-row gm-only">
+            <input type="checkbox" id="fogEnabledToggle" />
+            <span>Fog Ativo</span>
+          </label>
+
+          <div class="tool-sep"></div>
+          <label class="checkbox-row"><input type="checkbox" id="gridToggle" checked /><span>Grid</span></label>
+          <label class="checkbox-row"><input type="checkbox" id="snapToggle" checked /><span>Snap</span></label>
+          <div class="row" style="gap:3px; margin-top:2px;">
+            <button id="btnZoomIn" class="secondary" style="flex:1;">+</button>
+            <button id="btnZoomOut" class="secondary" style="flex:1;">-</button>
+            <button id="btnZoomReset" class="secondary" style="flex:1;">1:1</button>
           </div>
         </div>
 
-        <!-- Painel Lateral RPG -->
-        <div class="vtt-sidebar">
+        <div class="canvas-wrap">
+          <canvas id="vttCanvas"></canvas>
+          <canvas id="dice3dCanvas" width="220" height="220" style="position:absolute; right:16px; bottom:16px; pointer-events:none; display:none;"></canvas>
+        </div>
+
+        <!-- Barra Inferior de Macros e Jogadores -->
+        <div class="bottom-bar">
+          <div id="macroBar" class="row" style="gap:5px;"></div>
+          <div id="bottomPlayersBar" class="hint">Pronto • Arraste tokens (esq.), mova câmera (dir./meio), zoom (scroll)</div>
+        </div>
+      </div>
+
+      <!-- Painel Lateral Direito com Abas (estilo Roll20) -->
+      <aside id="rightSidebar" class="right-sidebar">
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="chat">💬 Chat</button>
+          <button class="tab-btn" data-tab="sheets">📋 Fichas</button>
+          <button class="tab-btn" data-tab="turns">⚔️ Turnos</button>
+          <button class="tab-btn" data-tab="audio">🎵 Áudio</button>
+          <button class="tab-btn" data-tab="net">🔌 Rede</button>
+        </div>
+
+        <!-- TAB 1: CHAT & DADOS 3D -->
+        <div id="tab-chat" class="tab-panel active">
           <fieldset class="card">
             <legend>Rolador de Dados (3D)</legend>
             <div class="row">
               <input id="diceExpr" type="text" value="1d20+5" style="flex:1;" placeholder="ex: 1d20+5, 2d20kh1" />
-              <button id="btnRollDice">Rolar</button>
+              <button id="btnRollDice" class="primary">Rolar</button>
             </div>
             <div class="row" style="margin-top:6px;">
               <button class="secondary quick-die" data-expr="1d20">d20</button>
               <button class="secondary quick-die" data-expr="2d20kh1">Vant.</button>
               <button class="secondary quick-die" data-expr="2d20kl1">Desv.</button>
+              <button class="secondary quick-die" data-expr="1d8">d8</button>
               <button class="secondary quick-die" data-expr="1d6">d6</button>
               <label class="checkbox-row gm-only" style="margin:0;">
                 <input type="checkbox" id="gmSecretRoll" />
-                <span>Oculto (GM)</span>
+                <span>Oculto</span>
               </label>
             </div>
-            <div id="diceLog" class="log-box" style="margin-top:6px; height:105px;"></div>
+            <div id="diceLog" class="log-box" style="margin-top:6px; height:115px;"></div>
           </fieldset>
 
-          <fieldset class="card">
+          <fieldset class="card" style="flex:1; display:flex; flex-direction:column; min-height:200px;">
             <legend>Chat de Roleplay (/me, /ooc, /w)</legend>
-            <div id="rpChatLog" class="log-box" style="height:120px; margin-bottom:6px;"></div>
+            <div id="rpChatLog" class="log-box" style="flex:1; margin-bottom:6px;"></div>
             <div class="row">
-              <input id="rpChatInput" type="text" style="flex:1;" placeholder="Fale ou use /me, /ooc, /w, **negrito**..." />
-              <button id="btnSendChat">Enviar</button>
+              <input id="rpChatInput" type="text" style="flex:1;" placeholder="Fale ou /me, /ooc, /w, **negrito**..." />
+              <button id="btnSendChat" class="primary">Enviar</button>
             </div>
           </fieldset>
+        </div>
 
+        <!-- TAB 2: FICHAS, HANDOUTS & NOTAS -->
+        <div id="tab-sheets" class="tab-panel">
           <fieldset class="card">
-            <legend>Iniciativa (Rodada <span id="roundNum">1</span>)</legend>
-            <div class="row gm-only" style="margin-bottom:6px;">
-              <input id="initName" type="text" placeholder="Nome" style="flex:1;" />
-              <input id="initVal" type="number" placeholder="Init" style="width:62px;" />
-              <button id="btnAddInit">+</button>
+            <legend>Fichas &amp; Macros</legend>
+            <div class="row" style="margin-bottom:6px;">
+              <select id="sheetSelector" style="flex:1;"></select>
+              <select id="sheetTemplateSelect" style="width:auto;">
+                <option value="dnd5e">D&amp;D 5e</option>
+                <option value="generic">Genérica</option>
+              </select>
             </div>
-            <div id="initList" class="list-box" style="max-height:110px;"></div>
-            <div class="row gm-only" style="margin-top:6px;">
-              <button id="btnNextTurn">Próximo Turno</button>
-              <button id="btnResetInit" class="secondary">Zerar</button>
+            <div class="row" style="margin-bottom:8px;">
+              <button id="btnNewSheet" class="primary">+ Nova Ficha</button>
+              <button id="btnExportSheet" class="secondary">Exportar</button>
+              <input type="file" id="importSheetInput" accept=".json,application/json" style="display:none;" />
+              <button id="btnImportSheet" class="secondary">Importar</button>
             </div>
+            <div id="sheetEditorContainer" class="grid-2"></div>
           </fieldset>
 
           <fieldset class="card gm-only">
@@ -487,115 +553,91 @@
             <div class="row" style="margin-bottom:6px;">
               <input id="handoutTitle" type="text" placeholder="Título do Handout" style="flex:1;" />
               <input type="file" id="handoutImgInput" accept="image/*" style="display:none;" />
-              <button id="btnSendHandoutImg" class="secondary">Enviar Img</button>
+              <button id="btnSendHandoutImg" class="secondary">Img</button>
             </div>
-            <textarea id="handoutText" placeholder="Texto do handout ou descrição..."></textarea>
+            <textarea id="handoutText" placeholder="Texto do handout..."></textarea>
             <div class="row" style="margin-top:4px; margin-bottom:8px;">
-              <button id="btnSendHandoutText">Enviar Texto</button>
+              <button id="btnSendHandoutText">Enviar Handout</button>
             </div>
-            <label for="gmNotes">Notas Privadas (salvas localmente):</label>
-            <textarea id="gmNotes" placeholder="Anotações da sessão (nunca enviadas na rede)..."></textarea>
+            <label for="gmNotes">Notas Privadas (locais):</label>
+            <textarea id="gmNotes" placeholder="Anotações secretas da campanha..."></textarea>
           </fieldset>
         </div>
-      </div>
-    </div>
 
-    <!-- ABA 2: FICHAS DE PERSONAGEM & MACROS -->
-    <div id="tab-sheets" class="tab-panel">
-      <fieldset class="card">
-        <legend>Fichas de Personagem &amp; Templates</legend>
-        <div class="row" style="margin-bottom:8px;">
-          <select id="sheetSelector" style="width:auto; min-width:180px;"></select>
-          <select id="sheetTemplateSelect" style="width:auto;">
-            <option value="dnd5e">Template: D&amp;D 5e</option>
-            <option value="generic">Template: Genérico / Livre</option>
-          </select>
-          <button id="btnNewSheet">+ Nova Ficha</button>
-          <button id="btnExportSheet" class="secondary">Exportar JSON</button>
-          <input type="file" id="importSheetInput" accept=".json,application/json" style="display:none;" />
-          <button id="btnImportSheet" class="secondary">Importar JSON</button>
+        <!-- TAB 3: TURNOS (INICIATIVA) -->
+        <div id="tab-turns" class="tab-panel">
+          <fieldset class="card" style="flex:1; display:flex; flex-direction:column;">
+            <legend>Turn Tracker — Rodada <span id="roundNum">1</span></legend>
+            <div class="row gm-only" style="margin-bottom:8px;">
+              <input id="initName" type="text" placeholder="Combatente" style="flex:1;" />
+              <input id="initVal" type="number" placeholder="Init" style="width:65px;" />
+              <button id="btnAddInit" class="primary">+</button>
+            </div>
+            <div id="initList" class="list-box" style="flex:1; min-height:220px;"></div>
+            <div class="row gm-only" style="margin-top:8px;">
+              <button id="btnNextTurn" class="primary" style="flex:1;">Próximo Turno ▶</button>
+              <button id="btnResetInit" class="secondary">Zerar</button>
+            </div>
+          </fieldset>
         </div>
-        <div id="sheetEditorContainer" class="grid-2"></div>
-      </fieldset>
-    </div>
 
-    <!-- ABA 2: CONEXÃO, VOZ & TELA -->
-    <div id="tab-connect" class="tab-panel">
-      <fieldset class="card">
-        <legend>Telemetria da Rede</legend>
-        <div class="stats-grid">
-          <div class="stat"><div class="stat-label">Latência (RTT)</div><div id="statRtt" class="stat-value">-- ms</div></div>
-          <div class="stat"><div class="stat-label">Jitter</div><div id="statJitter" class="stat-value">-- ms</div></div>
-          <div class="stat"><div class="stat-label">Perda Pacotes</div><div id="statLoss" class="stat-value">--</div></div>
-          <div class="stat"><div class="stat-label">Voz Recebida</div><div id="statBitrate" class="stat-value">-- kbps</div></div>
-          <div class="stat"><div class="stat-label">Tipo de Rota</div><div id="statRoute" class="stat-value">--</div></div>
-        </div>
-      </fieldset>
+        <!-- TAB 4: JUKEBOX (SOUNDBOARD + VOZ) -->
+        <div id="tab-audio" class="tab-panel">
+          <fieldset class="card">
+            <legend>Jukebox (Música P2P Estéreo)</legend>
+            <div class="row" style="margin-bottom:6px;">
+              <input type="file" id="musicFileInput" accept="audio/*" style="display:none;" />
+              <button id="btnLoadMusic" class="gm-only">Escolher Áudio</button>
+              <button id="btnPlayMusic" class="gm-only primary">▶ Tocar</button>
+              <button id="btnPauseMusic" class="gm-only secondary">⏸ Pausar</button>
+              <label class="checkbox-row gm-only">
+                <input type="checkbox" id="musicLoopToggle" checked />
+                <span>Loop</span>
+              </label>
+            </div>
+            <div id="musicCueStatus" class="hint" style="margin-bottom:6px;">Nenhuma faixa tocando</div>
+            <div class="row gm-only">
+              <label for="sbMasterVol" style="margin:0;">Envio Mestre:</label>
+              <input id="sbMasterVol" type="range" min="0" max="1" step="0.05" value="0.7" style="flex:1;" />
+            </div>
+            <label class="checkbox-row gm-only" style="margin-top:4px;">
+              <input type="checkbox" id="sbLocalPreview" checked />
+              <span>Ouvir retorno local da música</span>
+            </label>
+          </fieldset>
 
-      <div class="grid-2">
-        <!-- Painel Mestre (Multi-Peer) -->
-        <fieldset id="gmConnectCard" class="card">
-          <legend>Mestre — Convidar Jogadores (Multi-Peer)</legend>
-          <div class="row" style="margin-bottom:6px;">
-            <input id="newPeerName" type="text" placeholder="Nome do Jogador (ex: Guerreiro)" style="flex:1;" />
-            <button id="btnCreateOffer" disabled>1. Gerar Convite</button>
-            <button id="btnCopyOffer" class="secondary" disabled>Copiar</button>
-          </div>
-          <textarea id="offerOut" readonly placeholder="Clique em '1. Gerar Convite' após ativar o microfone..."></textarea>
-          <label for="answerIn" style="margin-top:6px;">Cole a resposta do jogador:</label>
-          <div class="row">
-            <textarea id="answerIn" placeholder="Cole CV1:... aqui" style="flex:1;"></textarea>
-            <button id="btnAcceptAnswer" disabled>Conectar</button>
-          </div>
-          <label style="margin-top:8px;">Jogadores Conectados:</label>
-          <div id="peerListBox" class="list-box"></div>
-        </fieldset>
+          <fieldset class="card gm-only">
+            <legend>Efeitos Sonoros (SFX)</legend>
+            <div class="row" style="margin-bottom:6px;">
+              <button class="sfx-builtin" data-sfx="bell">🔔 Sino</button>
+              <button class="sfx-builtin" data-sfx="crit">✨ Crítico</button>
+              <button class="sfx-builtin" data-sfx="hit">💥 Golpe</button>
+              <input type="file" id="sfxFileInput" accept="audio/*" multiple style="display:none;" />
+              <button id="btnAddSfx" class="secondary">+ SFX</button>
+            </div>
+            <div id="customSfxList" class="row"></div>
+          </fieldset>
 
-        <!-- Painel Jogador -->
-        <fieldset id="playerConnectCard" class="card" style="display:none;">
-          <legend>Jogador — Entrar na Mesa</legend>
-          <label for="playerNameInput">Seu Nome:</label>
-          <input id="playerNameInput" type="text" value="Jogador" style="margin-bottom:6px;" />
-          <label for="offerIn">Cole o convite do Mestre:</label>
-          <textarea id="offerIn" placeholder="Cole CV1:... aqui"></textarea>
-          <div class="row" style="margin:6px 0;">
-            <button id="btnCreateAnswer" disabled>2. Gerar Resposta</button>
-            <button id="btnCopyAnswer" class="secondary" disabled>Copiar Resposta</button>
-          </div>
-          <label for="answerOut">Sua resposta (envie ao Mestre):</label>
-          <textarea id="answerOut" readonly placeholder="Sua resposta aparecerá aqui..."></textarea>
-        </fieldset>
+          <fieldset class="card">
+            <legend>Voz, Modulador &amp; Volumes</legend>
+            <label for="micSelect">Microfone</label>
+            <select id="micSelect"></select>
+            <div class="meter-wrap"><div id="micMeter" class="meter-bar"></div></div>
 
-        <!-- Microfone e Saída -->
-        <fieldset class="card">
-          <legend>Microfone e Volumes</legend>
-          <label for="micSelect">Microfone</label>
-          <select id="micSelect"></select>
-          <div class="meter-wrap"><div id="micMeter" class="meter-bar"></div></div>
+            <label for="speakerSelect" style="margin-top:6px;">Saída de Áudio</label>
+            <select id="speakerSelect"></select>
 
-          <label for="speakerSelect" style="margin-top:8px;">Saída de Áudio</label>
-          <select id="speakerSelect"></select>
+            <div class="row" style="margin-top:6px;">
+              <label for="remoteVolume" style="margin:0; width:95px;">Volume Voz:</label>
+              <input id="remoteVolume" type="range" min="0" max="1" step="0.05" value="1" style="flex:1;" />
+            </div>
+            <div class="row" style="margin-top:4px;">
+              <label for="sbRemoteVolume" style="margin:0; width:95px;">Volume Música:</label>
+              <input id="sbRemoteVolume" type="range" min="0" max="1" step="0.05" value="0.7" style="flex:1;" />
+            </div>
 
-          <div class="row" style="margin-top:8px;">
-            <label for="remoteVolume" style="margin:0; width:110px;">Volume Voz:</label>
-            <input id="remoteVolume" type="range" min="0" max="1" step="0.05" value="1" style="flex:1;" />
-          </div>
-          <div class="row" style="margin-top:4px;">
-            <label for="sbRemoteVolume" style="margin:0; width:110px;">Volume Música:</label>
-            <input id="sbRemoteVolume" type="range" min="0" max="1" step="0.05" value="0.7" style="flex:1;" />
-          </div>
-
-          <label class="checkbox-row" style="margin-top:6px;">
-            <input type="checkbox" id="rawAudioToggle" checked />
-            <span>Modo Ultra-Baixa Latência (sem filtros de eco/ruído)</span>
-          </label>
-          <label class="checkbox-row">
-            <input type="checkbox" id="ptime10Toggle" />
-            <span>Pacotes 10 ms (padrão 20 ms evita perda)</span>
-          </label>
-          <div class="row" style="margin-top:8px;">
-            <label for="voiceEffectSelect" style="margin:0; width:110px;">Modulador Voz:</label>
-            <select id="voiceEffectSelect" style="flex:1;">
+            <label for="voiceEffectSelect" style="margin-top:8px;">Modulador de Voz (Ao Vivo):</label>
+            <select id="voiceEffectSelect">
               <option value="normal" selected>Normal (Limpo)</option>
               <option value="dragon">Dragão / Gigante (Grave)</option>
               <option value="demon">Demônio / Sombrio</option>
@@ -603,125 +645,128 @@
               <option value="cave">Caverna (Eco)</option>
               <option value="radio">Rádio / Comunicador</option>
             </select>
-          </div>
-          <label class="checkbox-row" style="margin-top:4px;">
-            <input type="checkbox" id="voiceMonitorToggle" />
-            <span>Ouvir minha voz com efeito (teste local)</span>
-          </label>
-          <div id="audioStatus" class="hint" style="margin-top:6px;">Ative o microfone antes de gerar ou aceitar um convite.</div>
-        </fieldset>
-      </div>
-
-      <!-- Transmissão de Tela + Preview Local -->
-      <fieldset class="card">
-        <legend>Transmissão de Tela (Sob Demanda)</legend>
-        <div class="row">
-          <select id="screenPreset" style="width:auto;">
-            <option value="1080p60" selected>1080p (12 Mbps)</option>
-            <option value="1440p60">1440p (20 Mbps)</option>
-            <option value="720p60">720p (6 Mbps)</option>
-            <option value="native60">Nativa (25 Mbps)</option>
-          </select>
-          <select id="screenMode" style="width:auto;">
-            <option value="motion" selected>Jogo / Vídeo (60 fps)</option>
-            <option value="detail">Texto / Código (nitidez)</option>
-          </select>
-          <select id="screenCodec" style="width:auto;">
-            <option value="h264" selected>H.264 (hardware)</option>
-            <option value="vp9">VP9</option>
-            <option value="av1">AV1</option>
-          </select>
-          <button id="btnShareScreen" disabled>Compartilhar Tela</button>
-          <button id="btnStopScreen" class="danger" disabled>Parar Tela</button>
-        </div>
-        <label class="checkbox-row" style="margin-top:6px;">
-          <input type="checkbox" id="screenAudioToggle" checked />
-          <span>Incluir áudio da tela (estéreo 192 kbps)</span>
-        </label>
-        <div id="screenStatus" class="hint" style="margin-top:4px;">Conecte-se primeiro para compartilhar ou assistir a tela.</div>
-
-        <!-- Preview Local Mutado para quem transmite -->
-        <div id="localScreenBox" class="screen-box">
-          <div class="row" style="justify-content:space-between; margin-bottom:4px;">
-            <strong>Preview da Sua Transmissão (áudio mutado para evitar eco)</strong>
-            <button id="btnToggleLocalPreview" class="secondary">Ocultar Preview</button>
-          </div>
-          <video id="localScreenPreview" autoplay playsinline muted></video>
+            <label class="checkbox-row" style="margin-top:4px;">
+              <input type="checkbox" id="voiceMonitorToggle" />
+              <span>Ouvir minha voz com efeito</span>
+            </label>
+            <label class="checkbox-row" style="margin-top:4px;">
+              <input type="checkbox" id="rawAudioToggle" checked />
+              <span>Modo Ultra-Baixa Latência (sem filtros)</span>
+            </label>
+            <label class="checkbox-row">
+              <input type="checkbox" id="ptime10Toggle" />
+              <span>Pacotes 10 ms (padrão 20 ms)</span>
+            </label>
+            <div id="audioStatus" class="hint" style="margin-top:4px;">Ative o microfone antes de conectar.</div>
+          </fieldset>
         </div>
 
-        <!-- Player Remoto -->
-        <div id="remoteScreenBox" class="screen-box">
-          <video id="remoteVideo" autoplay playsinline></video>
-          <div class="row" style="justify-content:space-between; margin-top:6px;">
-            <span id="videoStatsText">Aguardando vídeo...</span>
+        <!-- TAB 5: REDE, CONEXÃO P2P & TELA -->
+        <div id="tab-net" class="tab-panel">
+          <fieldset id="gmConnectCard" class="card">
+            <legend>Mestre — Convidar Jogadores</legend>
+            <div class="row" style="margin-bottom:6px;">
+              <input id="newPeerName" type="text" placeholder="Nome do Jogador" style="flex:1;" />
+              <button id="btnCreateOffer" class="primary" disabled>1. Convite</button>
+              <button id="btnCopyOffer" class="secondary" disabled>Copiar</button>
+            </div>
+            <textarea id="offerOut" readonly placeholder="Ative o microfone e gere o convite..."></textarea>
+            <div class="row" style="margin-top:6px;">
+              <textarea id="answerIn" placeholder="Cole a resposta CV1:... do jogador" style="flex:1;"></textarea>
+              <button id="btnAcceptAnswer" class="primary" disabled>Conectar</button>
+            </div>
+            <label style="margin-top:6px;">Jogadores na Mesa:</label>
+            <div id="peerListBox" class="list-box" style="max-height:110px;"></div>
+          </fieldset>
+
+          <fieldset id="playerConnectCard" class="card" style="display:none;">
+            <legend>Jogador — Entrar na Mesa</legend>
+            <label for="playerNameInput">Seu Nome:</label>
+            <input id="playerNameInput" type="text" value="Jogador" style="margin-bottom:6px;" />
+            <label for="offerIn">Cole o convite CV1:... do Mestre:</label>
+            <textarea id="offerIn" placeholder="Cole o convite aqui..."></textarea>
+            <div class="row" style="margin:6px 0;">
+              <button id="btnCreateAnswer" class="primary" disabled>2. Gerar Resposta</button>
+              <button id="btnCopyAnswer" class="secondary" disabled>Copiar</button>
+            </div>
+            <textarea id="answerOut" readonly placeholder="Sua resposta aparecerá aqui..."></textarea>
+          </fieldset>
+
+          <fieldset class="card">
+            <legend>Telemetria P2P</legend>
+            <div class="stats-grid">
+              <div class="stat"><div class="stat-label">RTT</div><div id="statRtt" class="stat-value">-- ms</div></div>
+              <div class="stat"><div class="stat-label">Jitter</div><div id="statJitter" class="stat-value">-- ms</div></div>
+              <div class="stat"><div class="stat-label">Perda</div><div id="statLoss" class="stat-value">--</div></div>
+              <div class="stat"><div class="stat-label">Voz</div><div id="statBitrate" class="stat-value">-- kbps</div></div>
+              <div class="stat"><div class="stat-label">Rota</div><div id="statRoute" class="stat-value">--</div></div>
+            </div>
+          </fieldset>
+
+          <fieldset class="card">
+            <legend>Compartilhamento de Tela</legend>
+            <div class="row" style="margin-bottom:6px;">
+              <select id="screenPreset" style="width:auto;">
+                <option value="1080p60" selected>1080p</option>
+                <option value="1440p60">1440p</option>
+                <option value="720p60">720p</option>
+                <option value="native60">Nativa</option>
+              </select>
+              <select id="screenMode" style="width:auto;">
+                <option value="motion" selected>60 fps</option>
+                <option value="detail">Nitidez</option>
+              </select>
+              <select id="screenCodec" style="width:auto;">
+                <option value="h264" selected>H.264</option>
+                <option value="vp9">VP9</option>
+                <option value="av1">AV1</option>
+              </select>
+            </div>
             <div class="row">
-              <label for="screenVolume" style="margin:0;">Volume Tela:</label>
-              <input id="screenVolume" type="range" min="0" max="1" step="0.05" value="1" style="width:100px;" />
-              <button id="btnFullscreen" class="secondary">Tela Cheia</button>
+              <button id="btnShareScreen" disabled>Compartilhar Tela</button>
+              <button id="btnStopScreen" class="danger" disabled>Parar</button>
             </div>
-          </div>
-        </div>
-      </fieldset>
+            <label class="checkbox-row" style="margin-top:6px;">
+              <input type="checkbox" id="screenAudioToggle" checked />
+              <span>Áudio da tela (estéreo 192 kbps)</span>
+            </label>
+            <div id="screenStatus" class="hint" style="margin-top:4px;">Conecte-se primeiro para compartilhar tela.</div>
 
-      <fieldset class="card">
-        <legend>Rede Avançada (STUN / TURN)</legend>
-        <details>
-          <summary>Opções de TURN (opcional)</summary>
-          <div class="grid-2" style="margin-top:6px;">
-            <div>
-              <label for="turnUrl">TURN URI</label>
-              <input id="turnUrl" type="text" placeholder="ex: turn:seu-turn.com:3478" />
+            <div id="localScreenBox" class="screen-box">
+              <div class="row" style="justify-content:space-between; margin-bottom:4px;">
+                <strong>Preview Local (mutado)</strong>
+                <button id="btnToggleLocalPreview" class="secondary">Ocultar</button>
+              </div>
+              <video id="localScreenPreview" autoplay playsinline muted></video>
             </div>
-            <div class="row">
-              <div style="flex:1;"><label for="turnUser">Usuário</label><input id="turnUser" type="text" /></div>
-              <div style="flex:1;"><label for="turnPass">Senha</label><input id="turnPass" type="password" /></div>
+
+            <div id="remoteScreenBox" class="screen-box">
+              <video id="remoteVideo" autoplay playsinline></video>
+              <div class="row" style="justify-content:space-between; margin-top:4px;">
+                <span id="videoStatsText" class="hint">Aguardando vídeo...</span>
+                <div class="row">
+                  <input id="screenVolume" type="range" min="0" max="1" step="0.05" value="1" style="width:75px;" />
+                  <button id="btnFullscreen" class="secondary">Tela Cheia</button>
+                </div>
+              </div>
             </div>
-          </div>
-        </details>
-      </fieldset>
-    </div>
+          </fieldset>
 
-    <!-- ABA 3: SOUNDBOARD -->
-    <div id="tab-soundboard" class="tab-panel">
-      <fieldset class="card">
-        <legend>Música Ambiente (Stream P2P Estéreo)</legend>
-        <div class="row" style="margin-bottom:8px;">
-          <input type="file" id="musicFileInput" accept="audio/*" style="display:none;" />
-          <button id="btnLoadMusic" class="gm-only">Escolher Áudio</button>
-          <button id="btnPlayMusic" class="gm-only">Tocar</button>
-          <button id="btnPauseMusic" class="gm-only secondary">Pausar</button>
-          <label class="checkbox-row gm-only" style="margin:0;">
-            <input type="checkbox" id="musicLoopToggle" checked />
-            <span>Loop</span>
-          </label>
-          <span id="musicCueStatus" class="hint">Nenhuma faixa tocando</span>
+          <fieldset class="card">
+            <legend>STUN / TURN (Avançado)</legend>
+            <details>
+              <summary class="hint" style="cursor:pointer;">Configurar TURN opcional</summary>
+              <div style="margin-top:6px;">
+                <input id="turnUrl" type="text" placeholder="turn:seu-turn.com:3478" style="margin-bottom:4px;" />
+                <div class="row">
+                  <input id="turnUser" type="text" placeholder="Usuário" style="flex:1;" />
+                  <input id="turnPass" type="password" placeholder="Senha" style="flex:1;" />
+                </div>
+              </div>
+            </details>
+          </fieldset>
         </div>
-        <div class="row gm-only">
-          <label for="sbMasterVol" style="margin:0;">Volume de Envio (Mestre):</label>
-          <input id="sbMasterVol" type="range" min="0" max="1" step="0.05" value="0.7" style="width:160px;" />
-          <label class="checkbox-row" style="margin:0;">
-            <input type="checkbox" id="sbLocalPreview" checked />
-            <span>Ouvir retorno local</span>
-          </label>
-        </div>
-      </fieldset>
-
-      <fieldset class="card gm-only">
-        <legend>Efeitos Sonoros (SFX)</legend>
-        <div class="row" style="margin-bottom:8px;">
-          <button class="sfx-builtin" data-sfx="bell">Sino / Taverna</button>
-          <button class="sfx-builtin" data-sfx="crit">Acerto Crítico</button>
-          <button class="sfx-builtin" data-sfx="hit">Impacto / Golpe</button>
-          <input type="file" id="sfxFileInput" accept="audio/*" multiple style="display:none;" />
-          <button id="btnAddSfx" class="secondary">+ Adicionar SFX (MP3/WAV/OGG)</button>
-        </div>
-        <div id="customSfxList" class="row"></div>
-      </fieldset>
-    </div>
-
-    <div class="xp-statusbar">
-      <span>PeerBuddy RPG • Modo Seguro Isolado</span>
-      <span>WebRTC DTLS-SRTP • VTT + Soundboard + Voz</span>
+      </aside>
     </div>
   </div>
 

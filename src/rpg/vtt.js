@@ -32,16 +32,19 @@ export function computeVisibilityPolygon(ox, oy, radius, walls, rayCount = 96) {
 }
 
 export class VttBoard {
-  constructor(canvas, { onTokenMove, onFogChange, onWallChange, onPing } = {}) {
+  constructor(canvas, { onTokenMove, onFogChange, onWallChange, onDrawChange, onPing } = {}) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.onTokenMove = onTokenMove || (() => {});
     this.onFogChange = onFogChange || (() => {});
     this.onWallChange = onWallChange || (() => {});
+    this.onDrawChange = onDrawChange || (() => {});
     this.onPing = onPing || (() => {});
 
     this.role = 'gm';
-    this.tool = 'select'; // 'select' | 'ruler' | 'fog-reveal' | 'fog-hide' | 'wall' | 'ping'
+    this.activeLayer = 'tokens'; // 'tokens' | 'gm' | 'lighting'
+    this.tool = 'select'; // 'select' | 'ruler' | 'fog-reveal' | 'fog-hide' | 'wall' | 'draw' | 'ping'
+    this.drawColor = '#f43f5e';
     this.gridSize = 50;
     this.showGrid = true;
     this.snapToGrid = true;
@@ -49,6 +52,7 @@ export class VttBoard {
     this.lightingEnabled = false;
     this.fogCells = new Set();
     this.walls = []; // { id, x1, y1, x2, y2 }
+    this.drawings = []; // { id, color, points: [{x, y}] }
 
     this.mapAssetId = null;
     this.mapImg = null;
@@ -69,11 +73,30 @@ export class VttBoard {
     this.rulerStart = null;
     this.rulerEnd = null;
     this.wallDraft = null;
+    this.drawDraft = null;
     this.paintingFog = false;
 
     this.#bindEvents();
     this.resize();
     this.#loop();
+  }
+
+  setLayer(layer) {
+    this.activeLayer = layer || 'tokens';
+  }
+
+  zoomIn() {
+    this.zoom = Math.min(3.5, this.zoom * 1.2);
+  }
+
+  zoomOut() {
+    this.zoom = Math.max(0.25, this.zoom / 1.2);
+  }
+
+  resetView() {
+    this.camX = 0;
+    this.camY = 0;
+    this.zoom = 1;
   }
 
   setRole(role) {
@@ -118,6 +141,7 @@ export class VttBoard {
       lightingEnabled: this.lightingEnabled,
       fogCells: Array.from(this.fogCells),
       walls: this.walls.map((w) => ({ ...w })),
+      drawings: this.drawings.map((d) => ({ ...d, points: d.points.map((p) => ({ ...p })) })),
       tokens: Array.from(this.tokens.values()),
     };
   }
@@ -131,9 +155,18 @@ export class VttBoard {
     if (typeof state.lightingEnabled === 'boolean') this.lightingEnabled = state.lightingEnabled;
     if (Array.isArray(state.fogCells)) this.fogCells = new Set(state.fogCells);
     if (Array.isArray(state.walls)) this.walls = state.walls.map((w) => ({ ...w }));
+    if (Array.isArray(state.drawings)) this.drawings = state.drawings.map((d) => ({ ...d }));
     if (Array.isArray(state.tokens)) {
       this.tokens.clear();
       state.tokens.forEach((t) => this.tokens.set(t.id, t));
+    }
+  }
+
+  applyDrawUpdate({ op, stroke }) {
+    if (op === 'clear') {
+      this.drawings = [];
+    } else if (op === 'add' && stroke) {
+      this.drawings.push(stroke);
     }
   }
 
@@ -235,6 +268,11 @@ export class VttBoard {
         return;
       }
 
+      if (this.tool === 'draw') {
+        this.drawDraft = { id: `draw-${Date.now().toString(36)}`, color: this.drawColor, points: [world] };
+        return;
+      }
+
       if ((this.tool === 'fog-reveal' || this.tool === 'fog-hide') && this.role === 'gm') {
         this.paintingFog = true;
         this.#paintFogAt(world.x, world.y);
@@ -270,6 +308,10 @@ export class VttBoard {
         this.wallDraft.y2 = world.y;
         return;
       }
+      if (this.drawDraft && this.tool === 'draw') {
+        this.drawDraft.points.push(world);
+        return;
+      }
       if (this.paintingFog) {
         this.#paintFogAt(world.x, world.y);
         return;
@@ -284,6 +326,13 @@ export class VttBoard {
     });
 
     window.addEventListener('mouseup', () => {
+      if (this.drawDraft) {
+        if (this.drawDraft.points.length > 1) {
+          this.drawings.push(this.drawDraft);
+          this.onDrawChange({ op: 'add', stroke: this.drawDraft });
+        }
+        this.drawDraft = null;
+      }
       if (this.wallDraft) {
         const len = Math.hypot(this.wallDraft.x2 - this.wallDraft.x1, this.wallDraft.y2 - this.wallDraft.y1);
         if (len > 10) {
@@ -433,6 +482,20 @@ export class VttBoard {
       }
     }
 
+    // Desenhos livres (camada tática)
+    const allStrokes = this.drawDraft ? [...this.drawings, this.drawDraft] : this.drawings;
+    for (const s of allStrokes) {
+      if (!s.points?.length) continue;
+      ctx.strokeStyle = s.color || '#f43f5e';
+      ctx.lineWidth = 3 / this.zoom;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.moveTo(s.points[0].x, s.points[0].y);
+      for (let i = 1; i < s.points.length; i++) ctx.lineTo(s.points[i].x, s.points[i].y);
+      ctx.stroke();
+    }
+
     // Paredes (visíveis para o Mestre)
     if (this.role === 'gm') {
       ctx.strokeStyle = '#22d3ee';
@@ -442,6 +505,13 @@ export class VttBoard {
         ctx.moveTo(wl.x1, wl.y1);
         ctx.lineTo(wl.x2, wl.y2);
         ctx.stroke();
+      }
+      if (this.drawDraft) {
+        if (this.drawDraft.points.length > 1) {
+          this.drawings.push(this.drawDraft);
+          this.onDrawChange({ op: 'add', stroke: this.drawDraft });
+        }
+        this.drawDraft = null;
       }
       if (this.wallDraft) {
         ctx.strokeStyle = '#f97316';

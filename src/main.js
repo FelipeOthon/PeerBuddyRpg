@@ -79,6 +79,13 @@ const els = {
   turnPass: $('turnPass'),
 
   // VTT & RPG
+  rightSidebar: $('rightSidebar'),
+  btnToggleSidebar: $('btnToggleSidebar'),
+  layerSelect: $('layerSelect'),
+  btnClearDraw: $('btnClearDraw'),
+  btnZoomIn: $('btnZoomIn'),
+  btnZoomOut: $('btnZoomOut'),
+  btnZoomReset: $('btnZoomReset'),
   vttCanvas: $('vttCanvas'),
   dice3dCanvas: $('dice3dCanvas'),
   macroBar: $('macroBar'),
@@ -203,6 +210,14 @@ const vtt = new VttBoard(els.vttCanvas, {
     if (currentRole === 'gm') {
       peerManager.broadcast(MSG.WALL_UPDATE, update);
       persistCampaign();
+    }
+  },
+  onDrawChange: (update) => {
+    if (currentRole === 'gm') {
+      peerManager.broadcast(MSG.DRAW_UPDATE, update);
+      persistCampaign();
+    } else {
+      peerManager.sendToPeer('gm', MSG.DRAW_UPDATE, update, 'player');
     }
   },
   onPing: (x, y) => {
@@ -347,6 +362,14 @@ async function handleRpgMessage(fromPeerId, msg) {
     }
     case MSG.WALL_UPDATE: {
       vtt.applyWallUpdate(msg.payload);
+      break;
+    }
+    case MSG.DRAW_UPDATE: {
+      vtt.applyDrawUpdate(msg.payload);
+      if (currentRole === 'gm') {
+        peerManager.broadcast(MSG.DRAW_UPDATE, msg.payload, fromPeerId);
+        persistCampaign();
+      }
       break;
     }
     case MSG.TOKEN_UPSERT: {
@@ -1004,6 +1027,30 @@ els.mapFileInput.addEventListener('change', async () => {
   els.mapFileInput.value = '';
 });
 
+els.btnToggleSidebar.addEventListener('click', () => {
+  const collapsed = els.rightSidebar.classList.toggle('collapsed');
+  els.btnToggleSidebar.textContent = collapsed ? 'Mostrar Painel' : 'Ocultar Painel';
+  vtt.resize();
+});
+
+els.layerSelect.addEventListener('change', () => {
+  vtt.setLayer(els.layerSelect.value);
+});
+
+els.btnClearDraw.addEventListener('click', () => {
+  vtt.applyDrawUpdate({ op: 'clear' });
+  if (currentRole === 'gm') {
+    peerManager.broadcast(MSG.DRAW_UPDATE, { op: 'clear' });
+    persistCampaign();
+  } else {
+    peerManager.sendToPeer('gm', MSG.DRAW_UPDATE, { op: 'clear' }, 'player');
+  }
+});
+
+els.btnZoomIn.addEventListener('click', () => vtt.zoomIn());
+els.btnZoomOut.addEventListener('click', () => vtt.zoomOut());
+els.btnZoomReset.addEventListener('click', () => vtt.resetView());
+
 els.btnAddToken.addEventListener('click', () => {
   const name = prompt('Nome do Token:', 'Herói');
   if (!name) return;
@@ -1015,7 +1062,7 @@ els.btnAddToken.addEventListener('click', () => {
     y: vtt.gridSize * 2 + vtt.gridSize / 2,
     size: 1,
     color: colors[vtt.tokens.size % colors.length],
-    hidden: false,
+    hidden: vtt.activeLayer === 'gm',
   };
   vtt.upsertToken(token);
   peerManager.broadcast(MSG.TOKEN_UPSERT, token);
