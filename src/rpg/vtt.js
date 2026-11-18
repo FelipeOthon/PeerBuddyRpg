@@ -1,24 +1,54 @@
 /**
- * Mesa / Grid VTT Leve em Canvas 2D.
- * Suporta pan/zoom, imagem de mapa (blob URL), grid configurável, tokens arrastáveis,
- * Fog of War (revelar/esconder células), régua de distância e pings.
+ * Mesa / Grid VTT Leve em Canvas 2D com Paredes, Iluminação e Visão Dinâmica.
  */
 
+export function raySegmentIntersect(ox, oy, dx, dy, x1, y1, x2, y2) {
+  const sx = x2 - x1;
+  const sy = y2 - y1;
+  const denom = dx * sy - dy * sx;
+  if (Math.abs(denom) < 1e-9) return null;
+  const qpx = x1 - ox;
+  const qpy = y1 - oy;
+  const t = (qpx * sy - qpy * sx) / denom;
+  const u = (qpx * dy - qpy * dx) / denom;
+  if (t >= 0 && u >= 0 && u <= 1) return t;
+  return null;
+}
+
+export function computeVisibilityPolygon(ox, oy, radius, walls, rayCount = 96) {
+  const pts = [];
+  for (let i = 0; i < rayCount; i++) {
+    const angle = (i / rayCount) * Math.PI * 2;
+    const dx = Math.cos(angle);
+    const dy = Math.sin(angle);
+    let minT = radius;
+    for (const w of walls) {
+      const t = raySegmentIntersect(ox, oy, dx, dy, w.x1, w.y1, w.x2, w.y2);
+      if (t !== null && t < minT) minT = t;
+    }
+    pts.push({ x: ox + dx * minT, y: oy + dy * minT });
+  }
+  return pts;
+}
+
 export class VttBoard {
-  constructor(canvas, { onTokenMove, onFogChange, onPing } = {}) {
+  constructor(canvas, { onTokenMove, onFogChange, onWallChange, onPing } = {}) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.onTokenMove = onTokenMove || (() => {});
     this.onFogChange = onFogChange || (() => {});
+    this.onWallChange = onWallChange || (() => {});
     this.onPing = onPing || (() => {});
 
     this.role = 'gm';
-    this.tool = 'select'; // 'select' | 'ruler' | 'fog-reveal' | 'fog-hide' | 'ping'
+    this.tool = 'select'; // 'select' | 'ruler' | 'fog-reveal' | 'fog-hide' | 'wall' | 'ping'
     this.gridSize = 50;
     this.showGrid = true;
     this.snapToGrid = true;
     this.fogEnabled = false;
-    this.fogCells = new Set(); // "col,row" escondidas
+    this.lightingEnabled = false;
+    this.fogCells = new Set();
+    this.walls = []; // { id, x1, y1, x2, y2 }
 
     this.mapAssetId = null;
     this.mapImg = null;
@@ -26,20 +56,19 @@ export class VttBoard {
     this.mapWidth = 1200;
     this.mapHeight = 800;
 
-    this.tokens = new Map(); // id -> { id, name, x, y, size, color, hidden }
-    this.pings = []; // { x, y, color, expiresAt }
+    this.tokens = new Map();
+    this.pings = [];
 
-    // Câmera
     this.camX = 0;
     this.camY = 0;
     this.zoom = 1;
 
-    // Interação
     this.draggingTokenId = null;
     this.panning = false;
     this.panStart = { x: 0, y: 0 };
     this.rulerStart = null;
     this.rulerEnd = null;
+    this.wallDraft = null;
     this.paintingFog = false;
 
     this.#bindEvents();
@@ -55,6 +84,7 @@ export class VttBoard {
     this.tool = tool;
     this.rulerStart = null;
     this.rulerEnd = null;
+    this.wallDraft = null;
   }
 
   resize() {
@@ -85,7 +115,9 @@ export class VttBoard {
       showGrid: this.showGrid,
       snapToGrid: this.snapToGrid,
       fogEnabled: this.fogEnabled,
+      lightingEnabled: this.lightingEnabled,
       fogCells: Array.from(this.fogCells),
+      walls: this.walls.map((w) => ({ ...w })),
       tokens: Array.from(this.tokens.values()),
     };
   }
@@ -96,7 +128,9 @@ export class VttBoard {
     if (typeof state.showGrid === 'boolean') this.showGrid = state.showGrid;
     if (typeof state.snapToGrid === 'boolean') this.snapToGrid = state.snapToGrid;
     if (typeof state.fogEnabled === 'boolean') this.fogEnabled = state.fogEnabled;
+    if (typeof state.lightingEnabled === 'boolean') this.lightingEnabled = state.lightingEnabled;
     if (Array.isArray(state.fogCells)) this.fogCells = new Set(state.fogCells);
+    if (Array.isArray(state.walls)) this.walls = state.walls.map((w) => ({ ...w }));
     if (Array.isArray(state.tokens)) {
       this.tokens.clear();
       state.tokens.forEach((t) => this.tokens.set(t.id, t));
@@ -104,7 +138,7 @@ export class VttBoard {
   }
 
   upsertToken(token) {
-    this.tokens.set(token.id, { ...token });
+    this.tokens.set(token.id, { visionRadius: 280, ...token });
   }
 
   moveToken(id, x, y) {
@@ -116,6 +150,14 @@ export class VttBoard {
 
   removeToken(id) {
     this.tokens.delete(id);
+  }
+
+  applyWallUpdate({ op, wall }) {
+    if (op === 'clear') {
+      this.walls = [];
+    } else if (op === 'add' && wall) {
+      this.walls.push({ ...wall });
+    }
   }
 
   applyFogUpdate({ op, cells }) {
@@ -188,6 +230,11 @@ export class VttBoard {
         return;
       }
 
+      if (this.tool === 'wall' && this.role === 'gm') {
+        this.wallDraft = { x1: world.x, y1: world.y, x2: world.x, y2: world.y };
+        return;
+      }
+
       if ((this.tool === 'fog-reveal' || this.tool === 'fog-hide') && this.role === 'gm') {
         this.paintingFog = true;
         this.#paintFogAt(world.x, world.y);
@@ -218,6 +265,11 @@ export class VttBoard {
         this.rulerEnd = world;
         return;
       }
+      if (this.wallDraft && this.tool === 'wall') {
+        this.wallDraft.x2 = world.x;
+        this.wallDraft.y2 = world.y;
+        return;
+      }
       if (this.paintingFog) {
         this.#paintFogAt(world.x, world.y);
         return;
@@ -232,6 +284,15 @@ export class VttBoard {
     });
 
     window.addEventListener('mouseup', () => {
+      if (this.wallDraft) {
+        const len = Math.hypot(this.wallDraft.x2 - this.wallDraft.x1, this.wallDraft.y2 - this.wallDraft.y1);
+        if (len > 10) {
+          const wall = { id: `wall-${Date.now().toString(36)}`, ...this.wallDraft };
+          this.walls.push(wall);
+          this.onWallChange({ op: 'add', wall });
+        }
+        this.wallDraft = null;
+      }
       if (this.draggingTokenId) {
         const t = this.tokens.get(this.draggingTokenId);
         if (t) {
@@ -337,15 +398,33 @@ export class VttBoard {
       ctx.font = `bold ${Math.max(11, Math.round(r * 0.65))}px Tahoma, sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      const label = (t.name || '?').slice(0, 3).toUpperCase();
-      ctx.fillText(label, t.x, t.y);
+      ctx.fillText((t.name || '?').slice(0, 3).toUpperCase(), t.x, t.y);
 
       ctx.font = 'bold 11px Tahoma, sans-serif';
       ctx.fillText(t.name || '', t.x, t.y + r + 11);
       ctx.restore();
     }
 
-    // Fog of War
+    // Iluminação & Visão Dinâmica (Raycasting contra paredes)
+    if (this.lightingEnabled && this.tokens.size > 0) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, 0, this.mapWidth, this.mapHeight);
+      for (const t of this.tokens.values()) {
+        if (t.hidden) continue;
+        const poly = computeVisibilityPolygon(t.x, t.y, t.visionRadius || 280, this.walls, 96);
+        if (poly.length > 2) {
+          ctx.moveTo(poly[0].x, poly[0].y);
+          for (let i = 1; i < poly.length; i++) ctx.lineTo(poly[i].x, poly[i].y);
+          ctx.closePath();
+        }
+      }
+      ctx.fillStyle = this.role === 'gm' ? 'rgba(0, 0, 0, 0.48)' : 'rgba(5, 7, 11, 0.94)';
+      ctx.fill('evenodd');
+      ctx.restore();
+    }
+
+    // Fog of War manual
     if (this.fogEnabled && this.fogCells.size > 0) {
       ctx.fillStyle = this.role === 'gm' ? 'rgba(0, 0, 0, 0.52)' : 'rgba(5, 7, 11, 0.98)';
       for (const key of this.fogCells) {
@@ -354,7 +433,26 @@ export class VttBoard {
       }
     }
 
-    // Régua de distância
+    // Paredes (visíveis para o Mestre)
+    if (this.role === 'gm') {
+      ctx.strokeStyle = '#22d3ee';
+      ctx.lineWidth = 3 / this.zoom;
+      for (const wl of this.walls) {
+        ctx.beginPath();
+        ctx.moveTo(wl.x1, wl.y1);
+        ctx.lineTo(wl.x2, wl.y2);
+        ctx.stroke();
+      }
+      if (this.wallDraft) {
+        ctx.strokeStyle = '#f97316';
+        ctx.beginPath();
+        ctx.moveTo(this.wallDraft.x1, this.wallDraft.y1);
+        ctx.lineTo(this.wallDraft.x2, this.wallDraft.y2);
+        ctx.stroke();
+      }
+    }
+
+    // Régua
     if (this.rulerStart && this.rulerEnd) {
       const dx = this.rulerEnd.x - this.rulerStart.x;
       const dy = this.rulerEnd.y - this.rulerStart.y;

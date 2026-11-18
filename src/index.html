@@ -383,7 +383,8 @@
 
     <!-- Abas -->
     <div class="tabs">
-      <button class="tab-btn active" data-tab="vtt">Mesa (VTT) &amp; Dados</button>
+      <button class="tab-btn active" data-tab="vtt">Mesa (VTT) &amp; Chat</button>
+      <button class="tab-btn" data-tab="sheets">Fichas &amp; Macros</button>
       <button class="tab-btn" data-tab="connect">Conexão, Voz &amp; Tela</button>
       <button class="tab-btn" data-tab="soundboard">Soundboard &amp; Trilha</button>
     </div>
@@ -397,6 +398,12 @@
             <button id="toolRuler" data-tool="ruler">Régua</button>
             <button id="toolPing" data-tool="ping">Ping</button>
             <span class="gm-only row" style="gap:6px;">
+              <button id="toolWall" data-tool="wall">Parede</button>
+              <button id="btnClearWalls" class="secondary">Limpar Paredes</button>
+              <label class="checkbox-row" style="margin:0;">
+                <input type="checkbox" id="lightingToggle" />
+                <span>Luz/Visão</span>
+              </label>
               <button id="toolFogReveal" data-tool="fog-reveal">Revelar Fog</button>
               <button id="toolFogHide" data-tool="fog-hide">Esconder Fog</button>
               <button id="btnFogCover" class="secondary">Cobrir Tudo</button>
@@ -423,14 +430,18 @@
 
           <div class="canvas-wrap">
             <canvas id="vttCanvas"></canvas>
+            <canvas id="dice3dCanvas" width="220" height="220" style="position:absolute; right:12px; bottom:12px; pointer-events:none; display:none;"></canvas>
           </div>
-          <div class="hint">Dica: arraste tokens com o botão esquerdo, mova a câmera com botão direito/meio e dê zoom com a rodinha do mouse.</div>
+          <div class="row" style="justify-content:space-between;">
+            <span class="hint">Arraste tokens (esq.), mova câmera (dir./meio), zoom (scroll).</span>
+            <div id="macroBar" class="row" style="gap:4px;"></div>
+          </div>
         </div>
 
         <!-- Painel Lateral RPG -->
         <div class="vtt-sidebar">
           <fieldset class="card">
-            <legend>Rolador de Dados</legend>
+            <legend>Rolador de Dados (3D)</legend>
             <div class="row">
               <input id="diceExpr" type="text" value="1d20+5" style="flex:1;" placeholder="ex: 1d20+5, 2d20kh1" />
               <button id="btnRollDice">Rolar</button>
@@ -445,7 +456,16 @@
                 <span>Oculto (GM)</span>
               </label>
             </div>
-            <div id="diceLog" class="log-box" style="margin-top:6px;"></div>
+            <div id="diceLog" class="log-box" style="margin-top:6px; height:105px;"></div>
+          </fieldset>
+
+          <fieldset class="card">
+            <legend>Chat de Roleplay (/me, /ooc, /w)</legend>
+            <div id="rpChatLog" class="log-box" style="height:120px; margin-bottom:6px;"></div>
+            <div class="row">
+              <input id="rpChatInput" type="text" style="flex:1;" placeholder="Fale ou use /me, /ooc, /w, **negrito**..." />
+              <button id="btnSendChat">Enviar</button>
+            </div>
           </fieldset>
 
           <fieldset class="card">
@@ -455,7 +475,7 @@
               <input id="initVal" type="number" placeholder="Init" style="width:62px;" />
               <button id="btnAddInit">+</button>
             </div>
-            <div id="initList" class="list-box"></div>
+            <div id="initList" class="list-box" style="max-height:110px;"></div>
             <div class="row gm-only" style="margin-top:6px;">
               <button id="btnNextTurn">Próximo Turno</button>
               <button id="btnResetInit" class="secondary">Zerar</button>
@@ -478,6 +498,25 @@
           </fieldset>
         </div>
       </div>
+    </div>
+
+    <!-- ABA 2: FICHAS DE PERSONAGEM & MACROS -->
+    <div id="tab-sheets" class="tab-panel">
+      <fieldset class="card">
+        <legend>Fichas de Personagem &amp; Templates</legend>
+        <div class="row" style="margin-bottom:8px;">
+          <select id="sheetSelector" style="width:auto; min-width:180px;"></select>
+          <select id="sheetTemplateSelect" style="width:auto;">
+            <option value="dnd5e">Template: D&amp;D 5e</option>
+            <option value="generic">Template: Genérico / Livre</option>
+          </select>
+          <button id="btnNewSheet">+ Nova Ficha</button>
+          <button id="btnExportSheet" class="secondary">Exportar JSON</button>
+          <input type="file" id="importSheetInput" accept=".json,application/json" style="display:none;" />
+          <button id="btnImportSheet" class="secondary">Importar JSON</button>
+        </div>
+        <div id="sheetEditorContainer" class="grid-2"></div>
+      </fieldset>
     </div>
 
     <!-- ABA 2: CONEXÃO, VOZ & TELA -->
@@ -553,6 +592,21 @@
           <label class="checkbox-row">
             <input type="checkbox" id="ptime10Toggle" />
             <span>Pacotes 10 ms (padrão 20 ms evita perda)</span>
+          </label>
+          <div class="row" style="margin-top:8px;">
+            <label for="voiceEffectSelect" style="margin:0; width:110px;">Modulador Voz:</label>
+            <select id="voiceEffectSelect" style="flex:1;">
+              <option value="normal" selected>Normal (Limpo)</option>
+              <option value="dragon">Dragão / Gigante (Grave)</option>
+              <option value="demon">Demônio / Sombrio</option>
+              <option value="robot">Robô / Construto</option>
+              <option value="cave">Caverna (Eco)</option>
+              <option value="radio">Rádio / Comunicador</option>
+            </select>
+          </div>
+          <label class="checkbox-row" style="margin-top:4px;">
+            <input type="checkbox" id="voiceMonitorToggle" />
+            <span>Ouvir minha voz com efeito (teste local)</span>
           </label>
           <div id="audioStatus" class="hint" style="margin-top:6px;">Ative o microfone antes de gerar ou aceitar um convite.</div>
         </fieldset>
