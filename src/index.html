@@ -371,6 +371,21 @@
     .screen-box.active { display: block; }
     .screen-box video { width: 100%; max-height: 240px; display: block; background: #000; border-radius: 4px; }
 
+    .ctx-menu {
+      position: fixed;
+      z-index: 1200;
+      display: none;
+      flex-direction: column;
+      gap: 3px;
+      padding: 5px;
+      min-width: 170px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-light);
+      border-radius: 6px;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.7);
+    }
+    .ctx-menu button { text-align: left; width: 100%; }
+
     .modal-backdrop {
       position: fixed;
       inset: 0;
@@ -442,9 +457,14 @@
               <option value="gm">Mestre (Oculta)</option>
             </select>
           </div>
-          <button id="btnLoadMap" class="gm-only">🗺️ Mapa</button>
+          <button id="btnLoadMap" class="gm-only">🗺️ + Mapa</button>
+          <button id="btnClearMap" class="gm-only secondary">🗑️ Remover Mapa</button>
           <input type="file" id="mapFileInput" accept="image/*" style="display:none;" />
           <button id="btnAddToken" class="gm-only">👤 + Token</button>
+          <label class="checkbox-row gm-only" title="Permite que jogadores movam qualquer token">
+            <input type="checkbox" id="allowAllTokensToggle" />
+            <span>Livres</span>
+          </label>
 
           <div class="tool-sep gm-only"></div>
           <button id="toolWall" class="gm-only" data-tool="wall">🧱 Parede</button>
@@ -528,24 +548,56 @@
           </fieldset>
         </div>
 
-        <!-- TAB 2: FICHAS, HANDOUTS & NOTAS -->
+        <!-- TAB 2: CENAS, FICHAS (PDF/D&D), HANDOUTS & BACKUP -->
         <div id="tab-sheets" class="tab-panel">
+          <fieldset class="card gm-only">
+            <legend>Biblioteca de Cenas &amp; Mapas</legend>
+            <div class="row" style="margin-bottom:6px;">
+              <select id="sceneSelector" style="flex:1;"></select>
+              <button id="btnNewScene" class="primary">+ Cena</button>
+              <button id="btnDeleteScene" class="danger">Excluir</button>
+            </div>
+            <div class="row">
+              <label for="gridSizeInput" style="margin:0;">Grid(px):</label>
+              <input id="gridSizeInput" type="number" value="50" min="20" max="200" style="width:62px;" />
+              <label for="scaleMetersInput" style="margin:0;">Escala(m):</label>
+              <input id="scaleMetersInput" type="number" value="1.5" step="0.5" min="0.5" style="width:58px;" />
+            </div>
+          </fieldset>
+
           <fieldset class="card">
-            <legend>Fichas &amp; Macros</legend>
+            <legend>Fichas (PDF Editável / D&amp;D 5e / Genérica)</legend>
             <div class="row" style="margin-bottom:6px;">
               <select id="sheetSelector" style="flex:1;"></select>
               <select id="sheetTemplateSelect" style="width:auto;">
                 <option value="dnd5e">D&amp;D 5e</option>
                 <option value="generic">Genérica</option>
+                <option value="pdf">PDF Editável</option>
               </select>
             </div>
-            <div class="row" style="margin-bottom:8px;">
+            <div class="row" style="margin-bottom:6px;">
               <button id="btnNewSheet" class="primary">+ Nova Ficha</button>
+              <input type="file" id="pdfSheetFileInput" accept="application/pdf,.pdf" style="display:none;" />
+              <button id="btnImportPdfSheet" class="secondary">📄 Subir PDF</button>
               <button id="btnExportSheet" class="secondary">Exportar</button>
               <input type="file" id="importSheetInput" accept=".json,application/json" style="display:none;" />
               <button id="btnImportSheet" class="secondary">Importar</button>
             </div>
+            <div class="row gm-only" style="margin-bottom:6px;">
+              <label for="sheetOwnerSelect" style="margin:0;">Vincular ao Jogador:</label>
+              <select id="sheetOwnerSelect" style="flex:1;"></select>
+            </div>
             <div id="sheetEditorContainer" class="grid-2"></div>
+            <div id="pdfSheetContainer" style="margin-top:6px;"></div>
+          </fieldset>
+
+          <fieldset class="card gm-only">
+            <legend>Campanha — Backup Completo</legend>
+            <div class="row">
+              <button id="btnExportCampaign" class="secondary" style="flex:1;">💾 Exportar Campanha</button>
+              <input type="file" id="importCampaignInput" accept=".json,application/json" style="display:none;" />
+              <button id="btnImportCampaign" class="secondary" style="flex:1;">📂 Importar Campanha</button>
+            </div>
           </fieldset>
 
           <fieldset class="card gm-only">
@@ -767,6 +819,53 @@
           </fieldset>
         </div>
       </aside>
+    </div>
+  </div>
+
+  <!-- Menu Contextual do Token -->
+  <div id="tokenContextMenu" class="ctx-menu">
+    <button id="ctxEditToken">✏️ Editar Token / Ícone / HP</button>
+    <button id="ctxToggleLayer">👁️ Alternar Camada (GM/Pública)</button>
+    <button id="ctxDuplicateToken">📄 Duplicar Token</button>
+    <button id="ctxDeleteToken" class="danger">🗑️ Remover Token (Del)</button>
+  </div>
+
+  <!-- Modal Editar Token -->
+  <div id="tokenEditModal" class="modal-backdrop">
+    <div class="modal-card" style="max-width:440px;">
+      <div class="row" style="justify-content:space-between; margin-bottom:8px;">
+        <strong>Propriedades do Token</strong>
+        <button id="btnCloseTokenModal" class="secondary">Fechar</button>
+      </div>
+      <div class="grid-2">
+        <div><label>Nome</label><input id="tokEditName" type="text" /></div>
+        <div class="row">
+          <div style="flex:1;"><label>HP Atual</label><input id="tokEditHp" type="number" /></div>
+          <div style="flex:1;"><label>HP Máx</label><input id="tokEditHpMax" type="number" /></div>
+        </div>
+        <div class="row">
+          <div style="flex:1;">
+            <label>Tamanho</label>
+            <select id="tokEditSize">
+              <option value="1">1×1 (Médio)</option>
+              <option value="2">2×2 (Grande)</option>
+              <option value="3">3×3 (Enorme)</option>
+            </select>
+          </div>
+          <div style="flex:1;"><label>Condições (emojis)</label><input id="tokEditCond" type="text" placeholder="ex: 🩸 ⚡ 🛡️" /></div>
+        </div>
+        <div>
+          <label>Vincular ao Jogador (quem pode mover)</label>
+          <select id="tokEditOwner"></select>
+        </div>
+        <div>
+          <label>Ícone / Avatar do Token</label>
+          <input type="file" id="tokEditImgInput" accept="image/*" />
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <button id="btnSaveTokenModal" class="primary" style="flex:1;">Salvar Token</button>
+        </div>
+      </div>
     </div>
   </div>
 

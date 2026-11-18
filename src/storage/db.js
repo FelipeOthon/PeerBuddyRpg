@@ -1,6 +1,5 @@
 /**
  * Persistência local em IndexedDB (zero alterações nas permissões do Tauri).
- * Armazena estado da campanha, notas do Mestre e assets binários (mapas/áudios).
  */
 
 const DB_NAME = 'peerbuddy_rpg_db';
@@ -58,5 +57,25 @@ export async function loadAssetBlob(assetId) {
     const req = tx.objectStore(STORE_ASSETS).get(assetId);
     req.onsuccess = () => resolve(req.result || null);
     req.onerror = () => reject(req.error);
+  });
+}
+
+export async function listAllAssets() {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_ASSETS, 'readonly');
+    const req = tx.objectStore(STORE_ASSETS).getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function deleteAssetBlob(assetId) {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_ASSETS, 'readwrite');
+    tx.objectStore(STORE_ASSETS).delete(assetId);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
   });
 }

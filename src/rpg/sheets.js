@@ -12,13 +12,40 @@ export function formatMod(mod) {
   return mod >= 0 ? `+${mod}` : `${mod}`;
 }
 
-export function createDefaultSheet(template = 'dnd5e', owner = 'Jogador') {
+export function canEditSheet(sheet, role, myPeerId) {
+  if (role === 'gm') return true;
+  if (!sheet?.ownerId) return false;
+  return sheet.ownerId === myPeerId;
+}
+
+export function createDefaultSheet(template = 'dnd5e', owner = 'Jogador', extra = {}) {
+  const base = {
+    id: `sheet-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
+    owner,
+    ownerId: extra.ownerId || null,
+  };
+
+  if (template === 'pdf') {
+    return {
+      ...base,
+      template: 'pdf',
+      name: extra.name || 'Ficha PDF',
+      pdfAssetId: extra.pdfAssetId || null,
+      pdfValues: {},
+      customOverlayFields: [],
+      notes: '',
+      macros: [
+        { id: 'mac-d20', name: 'Teste d20', expr: '1d20' },
+        { id: 'mac-init', name: 'Iniciativa', expr: '1d20+2' },
+      ],
+    };
+  }
+
   if (template === 'generic') {
     return {
-      id: `sheet-${Date.now().toString(36)}`,
+      ...base,
       template: 'generic',
       name: 'Novo Personagem',
-      owner,
       hp: 20,
       hpMax: 20,
       defense: 12,
@@ -36,11 +63,10 @@ export function createDefaultSheet(template = 'dnd5e', owner = 'Jogador') {
   }
 
   return {
-    id: `sheet-${Date.now().toString(36)}`,
+    ...base,
     template: 'dnd5e',
     name: 'Aventureiro',
     classLevel: 'Guerreiro Nv. 1',
-    owner,
     hp: 12,
     hpMax: 12,
     ca: 16,

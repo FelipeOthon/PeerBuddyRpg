@@ -16,8 +16,12 @@ export function fromBase64Url(str) {
   return bytes;
 }
 
-export async function encodeSignal(desc) {
-  const compact = JSON.stringify({ t: desc.type === 'offer' ? 'o' : 'a', s: desc.sdp });
+export async function encodeSignal(desc, meta = {}) {
+  const payload = { t: desc.type === 'offer' ? 'o' : 'a', s: desc.sdp };
+  if (meta.role) payload.r = meta.role;
+  if (meta.peerId) payload.p = meta.peerId;
+  if (meta.playerName) payload.n = meta.playerName;
+  const compact = JSON.stringify(payload);
   const rawBytes = new TextEncoder().encode(compact);
   if (typeof CompressionStream !== 'undefined') {
     const cs = new CompressionStream('deflate-raw');
@@ -32,6 +36,16 @@ export async function encodeSignal(desc) {
 
 export async function decodeSignal(input) {
   const str = input.trim();
+  const parsePayload = (text) => {
+    const obj = JSON.parse(text);
+    return {
+      type: obj.t === 'o' ? 'offer' : 'answer',
+      sdp: obj.s,
+      role: obj.r || null,
+      peerId: obj.p || null,
+      playerName: obj.n || null,
+    };
+  };
   if (str.startsWith('CV1:')) {
     const bytes = fromBase64Url(str.slice(4));
     const ds = new DecompressionStream('deflate-raw');
@@ -39,13 +53,11 @@ export async function decodeSignal(input) {
     writer.write(bytes);
     writer.close();
     const text = await new Response(ds.readable).text();
-    const obj = JSON.parse(text);
-    return { type: obj.t === 'o' ? 'offer' : 'answer', sdp: obj.s };
+    return parsePayload(text);
   }
   if (str.startsWith('CV0:')) {
     const text = new TextDecoder().decode(fromBase64Url(str.slice(4)));
-    const obj = JSON.parse(text);
-    return { type: obj.t === 'o' ? 'offer' : 'answer', sdp: obj.s };
+    return parsePayload(text);
   }
   throw new Error('Formato inválido. O código deve começar com CV1:');
 }

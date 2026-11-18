@@ -272,7 +272,11 @@ export class PeerManager {
     offer.sdp = tuneOpusSdp(offer.sdp, this.getPtime10());
     await session.pc.setLocalDescription(offer);
     await waitForIceGathering(session.pc);
-    return encodeSignal(session.pc.localDescription);
+    return encodeSignal(session.pc.localDescription, {
+      role: 'player',
+      peerId,
+      playerName: label,
+    });
   }
 
   async acceptAnswer(peerId, answerCode) {
@@ -287,12 +291,18 @@ export class PeerManager {
   async acceptInviteAndCreateAnswer(offerCode, label = 'Mestre') {
     const offer = await decodeSignal(offerCode);
     const session = this.createSession('gm', label, true);
-    await session.pc.setRemoteDescription(offer);
+    await session.pc.setRemoteDescription({ type: offer.type, sdp: offer.sdp });
     const answer = await session.pc.createAnswer();
     answer.sdp = tuneOpusSdp(answer.sdp, this.getPtime10());
     await session.pc.setLocalDescription(answer);
     await waitForIceGathering(session.pc);
-    return encodeSignal(session.pc.localDescription);
+    const answerCode = await encodeSignal(session.pc.localDescription);
+    return {
+      answerCode,
+      lockedRole: offer.role || 'player',
+      assignedPeerId: offer.peerId || null,
+      playerName: offer.playerName || null,
+    };
   }
 
   sendToPeer(peerId, type, payload, senderId = this.role) {

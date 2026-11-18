@@ -32,7 +32,7 @@ export function computeVisibilityPolygon(ox, oy, radius, walls, rayCount = 96) {
 }
 
 export class VttBoard {
-  constructor(canvas, { onTokenMove, onFogChange, onWallChange, onDrawChange, onPing } = {}) {
+  constructor(canvas, { onTokenMove, onFogChange, onWallChange, onDrawChange, onPing, onTokenContextMenu } = {}) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.onTokenMove = onTokenMove || (() => {});
@@ -40,12 +40,17 @@ export class VttBoard {
     this.onWallChange = onWallChange || (() => {});
     this.onDrawChange = onDrawChange || (() => {});
     this.onPing = onPing || (() => {});
+    this.onTokenContextMenu = onTokenContextMenu || (() => {});
 
     this.role = 'gm';
+    this.myPeerId = 'gm';
+    this.allowAllTokensMove = false;
     this.activeLayer = 'tokens'; // 'tokens' | 'gm' | 'lighting'
     this.tool = 'select'; // 'select' | 'ruler' | 'fog-reveal' | 'fog-hide' | 'wall' | 'draw' | 'ping'
     this.drawColor = '#f43f5e';
     this.gridSize = 50;
+    this.scaleMeters = 1.5;
+    this.gridColor = 'rgba(255, 255, 255, 0.16)';
     this.showGrid = true;
     this.snapToGrid = true;
     this.fogEnabled = false;
@@ -61,6 +66,8 @@ export class VttBoard {
     this.mapHeight = 800;
 
     this.tokens = new Map();
+    this.tokenImages = new Map(); // assetId -> HTMLImageElement
+    this.selectedTokenId = null;
     this.pings = [];
 
     this.camX = 0;
@@ -99,8 +106,33 @@ export class VttBoard {
     this.zoom = 1;
   }
 
-  setRole(role) {
+  setRole(role, myPeerId = null) {
     this.role = role === 'player' ? 'player' : 'gm';
+    if (myPeerId) this.myPeerId = myPeerId;
+  }
+
+  clearMap() {
+    if (this.mapObjectUrl) URL.revokeObjectURL(this.mapObjectUrl);
+    this.mapObjectUrl = null;
+    this.mapImg = null;
+    this.mapAssetId = null;
+    this.mapWidth = 1200;
+    this.mapHeight = 800;
+  }
+
+  setTokenImageBlob(assetId, mime, bytes) {
+    const blob = new Blob([bytes], { type: mime || 'image/png' });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      this.tokenImages.set(assetId, img);
+    };
+    img.src = url;
+  }
+
+  canMoveToken(token) {
+    if (this.role === 'gm' || this.allowAllTokensMove) return true;
+    return Boolean(token?.ownerId && token.ownerId === this.myPeerId);
   }
 
   setTool(tool) {
@@ -185,11 +217,13 @@ export class VttBoard {
     this.tokens.delete(id);
   }
 
-  applyWallUpdate({ op, wall }) {
+  applyWallUpdate({ op, wall, wallId }) {
     if (op === 'clear') {
       this.walls = [];
     } else if (op === 'add' && wall) {
       this.walls.push({ ...wall });
+    } else if (op === 'remove' && wallId) {
+      this.walls = this.walls.filter((w) => w.id !== wallId);
     }
   }
 
@@ -245,7 +279,31 @@ export class VttBoard {
       const sy = e.clientY - rect.top;
       const world = this.screenToWorld(sx, sy);
 
-      if (e.button === 1 || e.button === 2) {
+      if (e.button === 2) {
+        if (this.tool === 'wall' && this.role === 'gm') {
+          const hitWall = this.walls.find((wl) => {
+            const mx = (wl.x1 + wl.x2) / 2;
+            const my = (wl.y1 + wl.y2) / 2;
+            return Math.hypot(world.x - mx, world.y - my) < 28 || Math.hypot(world.x - wl.x1, world.y - wl.y1) < 18;
+          });
+          if (hitWall) {
+            this.applyWallUpdate({ op: 'remove', wallId: hitWall.id });
+            this.onWallChange({ op: 'remove', wallId: hitWall.id });
+            return;
+          }
+        }
+        const hitToken = this.#findTokenAt(world.x, world.y);
+        if (hitToken && this.role === 'gm') {
+          this.selectedTokenId = hitToken.id;
+          this.onTokenContextMenu(hitToken, e.clientX, e.clientY);
+          return;
+        }
+        this.panning = true;
+        this.panStart = { x: sx - this.camX, y: sy - this.camY };
+        return;
+      }
+
+      if (e.button === 1) {
         this.panning = true;
         this.panStart = { x: sx - this.camX, y: sy - this.camY };
         return;
@@ -281,8 +339,12 @@ export class VttBoard {
 
       const hit = this.#findTokenAt(world.x, world.y);
       if (hit) {
-        this.draggingTokenId = hit.id;
+        this.selectedTokenId = hit.id;
+        if (this.canMoveToken(hit)) {
+          this.draggingTokenId = hit.id;
+        }
       } else {
+        this.selectedTokenId = null;
         this.panning = true;
         this.panStart = { x: sx - this.camX, y: sy - this.camY };
       }
@@ -435,22 +497,58 @@ export class VttBoard {
       const r = ((t.size || 1) * this.gridSize) / 2 - 3;
       ctx.save();
       if (t.hidden) ctx.globalAlpha = 0.45;
-      ctx.fillStyle = t.color || '#3b82f6';
+
+      const img = t.avatarAssetId ? this.tokenImages.get(t.avatarAssetId) : null;
+      if (img) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, Math.max(10, r), 0, Math.PI * 2);
+        ctx.clip();
+        ctx.drawImage(img, t.x - r, t.y - r, r * 2, r * 2);
+        ctx.restore();
+      } else {
+        ctx.fillStyle = t.color || '#3b82f6';
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, Math.max(10, r), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `bold ${Math.max(11, Math.round(r * 0.65))}px Tahoma, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText((t.name || '?').slice(0, 3).toUpperCase(), t.x, t.y);
+      }
+
       ctx.beginPath();
       ctx.arc(t.x, t.y, Math.max(10, r), 0, Math.PI * 2);
-      ctx.fill();
-      ctx.lineWidth = 2.5;
-      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = this.selectedTokenId === t.id ? 3.5 : 2.5;
+      ctx.strokeStyle = this.selectedTokenId === t.id ? '#facc15' : t.color || '#ffffff';
       ctx.stroke();
 
+      // Barra de HP acima do token
+      if (t.hpMax > 0) {
+        const bw = Math.max(32, r * 2);
+        const bh = 6;
+        const bx = t.x - bw / 2;
+        const by = t.y - r - 11;
+        const ratio = Math.max(0, Math.min(1, (t.hp ?? t.hpMax) / t.hpMax));
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
+        ctx.fillStyle = ratio > 0.5 ? '#22c55e' : ratio > 0.25 ? '#f59e0b' : '#ef4444';
+        ctx.fillRect(bx, by, bw * ratio, bh);
+      }
+
+      // Condições
+      if (t.conditions) {
+        ctx.font = '12px Segoe UI Emoji, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(t.conditions, t.x, t.y - r - (t.hpMax > 0 ? 18 : 8));
+      }
+
       ctx.fillStyle = '#ffffff';
-      ctx.font = `bold ${Math.max(11, Math.round(r * 0.65))}px Tahoma, sans-serif`;
+      ctx.font = 'bold 11px Tahoma, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText((t.name || '?').slice(0, 3).toUpperCase(), t.x, t.y);
-
-      ctx.font = 'bold 11px Tahoma, sans-serif';
-      ctx.fillText(t.name || '', t.x, t.y + r + 11);
+      ctx.fillText((t.hidden ? '[GM] ' : '') + (t.name || ''), t.x, t.y + r + 11);
       ctx.restore();
     }
 

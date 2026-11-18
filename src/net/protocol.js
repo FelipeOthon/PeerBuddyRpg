@@ -6,8 +6,11 @@ export const PROTOCOL_VERSION = 1;
 
 export const MSG = Object.freeze({
   PEER_HELLO: 'peer:hello',
+  PROFILE_UPDATE: 'profile:update',
   STATE_SNAPSHOT: 'state:snapshot',
   SCENE_SET: 'scene:set',
+  SCENE_LIST: 'scene:list',
+  SCENE_DELETE: 'scene:delete',
   FOG_UPDATE: 'fog:update',
   TOKEN_UPSERT: 'token:upsert',
   TOKEN_MOVE: 'token:move',
